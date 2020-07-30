@@ -501,6 +501,15 @@ title="Easy editing stylesheet" ?>
 		  <token postag='NC[CF]P000|AQ0[CF]P0' postag_regexp='yes'/>
       </antipattern>	  
 <!-- MARCOAGPINTO 2020-07-21 (2-JUL-2020+) *END* -->
+<!-- MARCOAGPINTO 2020-07-30 (2-JUL-2020+) *START* -->
+<!-- "Uma informação o mais simples e o mais rica." -->
+      <antipattern>
+          <token postag='DA0MS0|PD0MS000|PP3MSA00' postag_regexp='yes'/>		  
+          <token postag='NC[CM]S000|NC[CM]N000|RG' postag_regexp='yes'/>
+          <token postag='AQ0[CF]S0|NC[CF]S000' postag_regexp='yes'/>
+		  <token negate="yes" regexp='yes'>em|da|do|que</token>
+      </antipattern>	
+<!-- MARCOAGPINTO 2020-07-30 (2-JUL-2020+) *END* -->
       <pattern>
           <token negate='yes' regexp='yes'>&hifen;</token>
         <marker>
@@ -518,23 +527,25 @@ title="Easy editing stylesheet" ?>
         </marker>
       </pattern>
       <message>&MSG_ECG;</message>
-        <suggestion><match no='2' postag="(D[ADIP].|N.|A..|P[^IDP].|Z.)MS(.+)" postag_replace='$1FS$2' postag_regexp="yes" include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> \5</suggestion>
-        <suggestion><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> <match no='5' postag="(N.|[AD]..)F.(.+)" postag_replace='$1MS$2' postag_regexp="yes"/></suggestion>
+        <suggestion suppress_misspelled="yes"><match no='2' postag="(D[ADIP].|N.|A..|P[^IDP].|Z.)MS(.+)" postag_replace='$1FS$2' postag_regexp="yes" include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> \5</suggestion>
+        <suggestion suppress_misspelled="yes"><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> <match no='5' postag="(N.|[AD]..)F.(.+)" postag_replace='$1MS$2' postag_regexp="yes"/></suggestion>
 <!-- TEMP REMOVE		<suggestion><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> <match no='5' postag="(N.|[AD]..)F.(.+)" postag_replace='$1FS$2' postag_regexp="yes"/></suggestion>  MARCOAGPINTO 2019-12-27 -->
 <!-- TEMP REMOVE        <suggestion><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/> <match no='5' postag="(N.|[AD]..)F.(.+)" postag_replace='$1FP$2' postag_regexp="yes"/></suggestion>  MARCOAGPINTO 2019-12-27 -->
-        <suggestion><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/>, <match no='5' include_skipped='all'/></suggestion>
+        <suggestion suppress_misspelled="yes"><match no='2' include_skipped='all'/> <match no='3' include_skipped='all'/> <match no='4' include_skipped='all'/>, <match no='5' include_skipped='all'/></suggestion>
       <example correction='Uma vaca|Um boi|Um, vaca'><marker>Um vaca</marker> está no pasto.</example>
-      <example correction='uma omelete|um (omelete)|um, omelete'>Você pode fazer <marker>um omelete</marker> espanhola para eu jantar, por favor?</example>
+      <example correction='uma omelete|um, omelete'>Você pode fazer <marker>um omelete</marker> espanhola para eu jantar, por favor?</example>
       <example>O Um torna-se Dois, o Dois torna-se Três.</example>
       <example>Diz-se que a cada dia nasce um trouxa, e disso o vigarista sabe.</example>
-      <example correction='uma sanduíche|um (sanduíche)|um, sanduíche'>Estão comendo <marker>um sanduíche</marker>.</example>
-      <example correction="uma terrível dor|um terrível (dor)|um terrível, dor">Tenho <marker>um terrível dor</marker> na cabeça.</example>
-      <example correction="uma grande erupção|um grande (erupção)|um grande, erupção">Por exemplo, <marker>um grande erupção</marker> vulcânica causa maior reflexão da luz solar de vo…</example>
+      <example correction='uma sanduíche|um, sanduíche'>Estão comendo <marker>um sanduíche</marker>.</example>
+      <example correction="uma terrível dor|um terrível, dor">Tenho <marker>um terrível dor</marker> na cabeça.</example>
+      <example correction="uma grande erupção|um grande, erupção">Por exemplo, <marker>um grande erupção</marker> vulcânica causa maior reflexão da luz solar de vo…</example>
       <example>O monte Farinha é uma montanha do distrito de Vila Real.</example>
       <example>Não parece haver má notícia capaz de…</example>
       <example>…tecnologia o mais rápida possível…</example>
       <example>Tem consistência tipo água.</example><!-- informality -->
       <example>De acordo com uma fonte do Governo britânico ouvida pelo The Telegr…</example>
+      <example>Deixe-me dirigir o seu novo Toyota.</example>
+	  <example type='correct'>Uma informação o mais simples e <marker>o mais rica</marker>.</example>
     </rule>
     <rule>
       <pattern>
@@ -667,6 +678,17 @@ title="Easy editing stylesheet" ?>
 	      <token postag='NC[CFM]S000' postag_regexp='yes'/>
       </antipattern>
 <!-- MARCOAGPINTO 2020-07-20 (2-JUL-2020+) *END* -->
+<!-- MARCOAGPINTO 2020-07-29 (2-JUL-2020+) *START* -->
+<!-- "Foram os textos reformados e adaptados infinitas vezes." -->
+<!-- "Foram os textos reformados e adaptados inúmeras vezes." -->
+<!-- "Foram os textos reformados e adaptado infinitas vezes." -->
+<!-- "Foram os textos reformados e adaptado inúmeras vezes." -->
+      <antipattern>
+		  <token postag='VMP00[SP]M' postag_regexp='yes'/>
+		  <token postag='AQ0[CF]P0' postag_regexp='yes'/>
+		  <token postag='AQ0[CF]P0|NC[CF]P000' postag_regexp='yes'/>		  
+      </antipattern>
+<!-- MARCOAGPINTO 2020-07-29 (2-JUL-2020+) *END* -->
       <pattern>
           <token negate='yes' regexp='yes'>de|&hifen;</token>
         <marker>
@@ -697,6 +719,10 @@ title="Easy editing stylesheet" ?>
       <example correction="As escolas|Os (escolas)|Os, escolas"><marker>Os escolas</marker> Álvaro de Campos, José Rodrigues dos Santos e Fernando Pessoa têm sido bem avaliadas.</example>
       <example>Cento e oitenta línguas indígenas são faladas em áreas remotas e diversas…</example>
       <example type='triggers_error'>...gicos exibem a notável similaridade de unidades e processos discutida na secção anterior.</example>
+	  <example type='correct'>Foram os textos reformados e <marker>adaptados infinitas</marker> vezes.</example>
+	  <example type='correct'>Foram os textos reformados e <marker>adaptados inúmeras</marker> vezes.</example>
+	  <example type='correct'>Foram os textos reformados e <marker>adaptado infinitas</marker> vezes.</example>
+	  <example type='correct'>Foram os textos reformados e <marker>adaptado inúmeras</marker> vezes.</example>
     </rule>
     <rule>
 <!-- MARCOAGPINTO 2020-05-16 *START* -->
@@ -1084,6 +1110,7 @@ title="Easy editing stylesheet" ?>
       <example>…da aprovação das Leis n.º 54/2017, que procedeu à alteração…</example>
       <example>…alta de sentido ou ininteligibilidade de termos e frases básicos t…</example>
       <example>Eu sei que tive essas plantas, mas não as encontro.</example>
+      <example>Eu as encontro.</example>
     </rule>
     <rule>
       <antipattern>
@@ -1326,12 +1353,14 @@ title="Easy editing stylesheet" ?>
           <token postag_regexp="yes" postag="(?:Z|D..)[CF][SN].+"/>
           <token postag_regexp="yes" postag="A..[CF][SN].+" min='0' max='2'/>
           <token postag="N.FS.+" postag_regexp='yes'>
-            <exception postag_regexp="yes" postag="(?:A..|[PN].)[CM]S.+"/></token>
+            <exception postag_regexp="yes" postag="(?:A..|[PN].)[CM]S.+"/><exception>vez</exception></token>
+          <!-- TODO: other exceptions, time expressions-->
       </pattern>
       <message>Erro de concordância de género.</message>
         <suggestion>\1 <match no='2' postag='(A..|N.|Z.)MS(.+)' postag_replace='$1FS$2' postag_regexp='yes'/> \3 <match no='4' include_skipped='all'/> <match no='5' include_skipped='all'/></suggestion>
       <example correction="É necessária uma festa"><marker>É necessário uma festa</marker>.</example>
       <example correction="É necessária uma grande festa"><marker>É necessário uma grande festa</marker>.</example>
+      <example>Ele foi mentiroso uma só vez</example>
     </rule>
     <rule>
       <pattern>
@@ -1547,7 +1576,7 @@ title="Easy editing stylesheet" ?>
       </pattern>
       <message>&MSG_ECG;</message>
         <suggestion>a \2</suggestion>
-        <suggestion>o <match no='2' postag='(A..|N.|Z.)FS(.+)' postag_replace='$1MS$2' postag_regexp='yes'/></suggestion>
+        <suggestion suppress_misspelled="yes">o <match no='2' postag='(A..|N.|Z.)FS(.+)' postag_replace='$1MS$2' postag_regexp='yes'/></suggestion>
       <url>https://pt.wikipedia.org/wiki/Artigo_(gram%C3%A1tica)</url>
       <example correction='A cadela|O cão'><marker>O cadela</marker> está no pasto.</example>
       <example type='correct'>A cadela está no pasto.</example>
@@ -1767,12 +1796,15 @@ title="Easy editing stylesheet" ?>
       <example correction="pai natal|pais natais|pais, natal">Havia <marker>pais natal</marker> na festa.</example>
       <example correction="todinho litoral|todo litoral|todinho, litoral|todo, litoral">Possui uma extensão aproximada de 378 km, o que representa 3,8% de <marker>todos litoral</marker> do México.</example>
       <example correction="caso mais preocupante|casos mais preocupantes|casos mais, preocupante">Os <marker>casos mais preocupante</marker> são estas.</example>
+      <example correction="o bugio|os bugios|os, bugio">Macacos maiores como <marker>os bugio</marker></example>
       <example>Conforme mais dados vão sendo acumulados de pessoas de todas as idades.</example>
       <example>Os rinocerontes serão anestesiados, antes de se remover o chifre.</example>
       <example>Calças, as mais rasgadas possível!</example>
       <example>Os montes Evereste, K2 e Kanchenjunga são os mais altos do mundo.</example>
       <example>As cores são: Ás de Copas vermelho, Ás de Ouros vermelho, Ás de Paus preto e Ás de Espadas preto.</example>
       <example>Os entendimentos têm de ser o mais amplos possível para serem efectivos.</example>
+      <example>Eu os encontro.</example>
+      <example>Eu nem as encontro.</example>
     </rule>
     <rule>
       <antipattern>
@@ -2655,6 +2687,7 @@ title="Easy editing stylesheet" ?>
       <example>Conforme mais dados vão sendo acumulados de pessoas de todas as idades.</example>
       <example>Pega na chave das <marker>fechaduras grande</marker>.</example>
       <example>As respostas têm de ser o mais amplas possível para serem efectivos.</example>
+      <example>Eu as encontro.</example>
     </rule>
     <rule>
       <antipattern>
@@ -6516,6 +6549,7 @@ MARCOAGPINTO 2020-02-18 -->
       <example>Junte a cebola.</example>
       <example>Mande lembranças minhas para seus pais.</example>
       <example>A guerra trouxe a ruína para o país.</example>
+      <example>Eu o acordo às 6 horas toda manhã.</example>
     </rule>
 
   <rulegroup id='FRAGMENT_TWO_ARTICLES' name='Fragmento: dois artigos seguidos' default='on'>

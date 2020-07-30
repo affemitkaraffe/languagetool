@@ -1320,6 +1320,13 @@ RB => Règles Brutes
     </pattern>
     <disambig action="remove" postag="P"></disambig>
   </rule>
+  <rule id="entre" name="entre-t-il, entre (not preposition)">
+    <pattern>
+      <token postag="V.*" postag_regexp="yes"></token>
+      <token postag="R .*" postag_regexp="yes" regexp="yes">-.*</token>
+    </pattern>
+    <disambig action="filterall"></disambig>
+  </rule>
   <rule name="RB : Préposition" id="RB-PREPOSITION">
     <pattern>
       <marker>
@@ -2261,6 +2268,15 @@ RB => Règles Brutes
       </pattern>
       <disambig action="ignore_spelling"/>
     </rule>
+    <rule>
+      <!-- Dollar price ("$1M") -->
+      <pattern>
+        <marker>
+          <token regexp="yes">[€$£¥¤]\d+[MK]</token>
+        </marker>
+      </pattern>
+      <disambig action="ignore_spelling"/>
+    </rule>
   </rulegroup>
 
   <rule name="Ignore spelling of domain names" id="IGNORE_DOMAIN_NAMES">
@@ -2315,9 +2331,9 @@ RB => Règles Brutes
     <disambig action="ignore_spelling"/>
   </rule>
 
-    <rule name="Ignore spelling of underscores" id="IGNORE_SPELLING_OF_UNDERSCORES">
+    <rule name="Ignore spelling of punctuation characters" id="IGNORE_SPELLING_OF_PUNCTUATION">
     <pattern>
-        <token regexp="yes">[_]+</token>
+        <token regexp="yes">[_\^]+</token>
     </pattern>
     <disambig action="ignore_spelling"/>
   </rule>
@@ -2334,10 +2350,10 @@ RB => Règles Brutes
   <rule name="Ignore number strings" id="IGNORE_NUMBERS">
     <pattern>
       <token regexp="yes">
-        [\dA-z\.\,éèëöïîôêàçœæÂÊÎÔÛÄËÏÖÜÀÆÇÉÈŒ]+\d[\dA-z\.\,éèëöïîôêàçœæÂÊÎÔÛÄËÏÖÜÀÆÇÉÈŒ]+
-        <exception regexp="yes">[A-z\.\,éèëöïîôêàçœæÂÊÎÔÛÄËÏÖÜÀÆÇÉÈŒ]+\d[A-z\.\,éèëöïîôêàçœæÂÊÎÔÛÄËÏÖÜÀÆÇÉÈŒ]+</exception>
+        [\dA-z\.\,éèëöïîôêàùûçœæÂÊÎÔÛÄËÏÖÜÙÀÆÇÉÈŒ—–—‒-]+°?\d[\dA-z\.\,éèëöïîôêàçœæùûÂÊÎÔÛÄËÏÖÜÙÀÆÇÉÈŒ—–—‒-]+
+        <exception regexp="yes">[A-z\.\,éèëöïîôêàçœæùûÂÊÎÔÛÄËÏÖÜÙÀÆÇÉÈŒ]+\d[A-z\.\,éèëöïîôêàçœæùûÂÊÎÔÛÄËÏÖÜÀÙÆÇÉÈŒ]+</exception>
         <exception regexp="yes">\d+</exception>
-        <exception regexp="yes" case_sensitive="yes">[A-Z\.\,ÂÊÎÔÛÄËÏÖÜÀÆÇÉÈŒ]+</exception>
+        <exception regexp="yes" case_sensitive="yes">[A-Z\.\,ÂÊÎÔÛÄËÏÖÜÙÀÆÇÉÈŒ]+</exception>
       </token>
     </pattern>
     <disambig action="ignore_spelling"/>

@@ -1634,6 +1634,7 @@ Hard Rock Hotel
 Lesser Antilles
 Greater Antilles
 # Gregorian Calendar # see https://www.merriam-webster.com/dictionary/Gregorian%20calendar
+Latin America
 Latin American
 Puerto Rico
 World Health Report
@@ -4060,3 +4061,129 @@ Geary County
 Junction City
 Fort Riley
 Irish Free State
+Ritter Sport
+General Mills
+iA Writer
+Glen Arbor
+Twentieth Century Fox
+Cocoa Beach
+Eau Gallie
+Florida International University
+FIU Panthers
+Addis Abeba
+Addis Ababa University
+Captain Morgan
+Bang & Olufsen
+Bang and Olufsen
+Mount Midoriyama
+American Ninja Warrior
+Gerard James Butler
+Gerard Butler
+Orlando Avenue
+Orlando Ave
+Kelly Price
+Wizz Air
+Daft Punk
+Aperol Spritz
+Brent Crude Oil
+Brent Crude
+St. Louis Rams
+St Louis Rams
+Saguaro National Park
+Grand Strand
+San Antonio Bay
+San Antonian
+San Antonians
+Terre Haute
+Fort Wayne
+Michigan City
+Balcones Fault
+Miami Dade College
+Harley-Davidson Sportster
+Virgin Voyages
+SAP NetWeaver
+SAP ERP
+SAP CRM
+Embarcadero Technologies
+Embarcadero Freeway
+Lord Voldemort
+Davis Cup
+Santo Domingo
+Bonnie and Clyde
+Bonnie & Clyde
+Baldwin County
+Huckleberry Finn
+Charleston Road
+Charleston Rd
+Harman Kardon
+San Juan
+Trujillo Alto
+Vega Baja
+Columbia River
+Tennessee River
+Brazos River
+Pecos River
+Kuskokwim River
+Cimarron River
+Cumberland River
+Yellowstone River
+North Platte River
+Ouachita River
+Saint Lawrence River
+Gila River
+Sheyenne River
+Tanana River
+Smoky Hill River
+Niobrara River
+Little Missouri River
+Sabine River
+James River
+Des Moines River
+Trinity River
+Wabash River
+Mackenzie River
+Nelson River
+Saskatchewan River
+Churchill River
+South Saskatchewan River
+North Saskatchewan River
+Fraser River
+Ottawa River
+Athabasca River
+Liard River
+Assiniboine River
+Albany River
+Severn River
+Thelon River
+La Grande River
+Koksoak River
+Coppermine River
+Dubawnt River
+Winnipeg River
+Kootenay River
+Nottaway River
+Eastmain River
+Attawapiskat River
+Kazan River
+Red Deer River
+Great Whale River
+Porcupine River
+Pend d'Oreille River
+Saguenay River
+Saint John River
+Stewart River
+Lululemon Athletica
+Karl Lagerfeld
+Bharti Airtel
+Kantar Group
+Millward Brown
+Chandni Chowk
+Jama Masjid
+North American Van Lines
+Porsche Cayman
+Porsche Cayman S
+Rubicon River
+Coeur d'Alene
+Boise City
+North Little Rock
+Fort Smith

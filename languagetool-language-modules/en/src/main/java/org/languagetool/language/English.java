@@ -193,7 +193,7 @@ public class English extends Language implements AutoCloseable {
         new EnglishDiacriticsRule(messages),
         new EnglishPlainEnglishRule(messages),
         new EnglishRedundancyRule(messages),
-        new SimpleReplaceRule(messages),
+        new SimpleReplaceRule(messages, this),
         new ReadabilityRule(messages, this, userConfig, false),
         new ReadabilityRule(messages, this, userConfig, true)
     ));
@@ -249,6 +249,7 @@ public class English extends Language implements AutoCloseable {
   protected int getPriorityForId(String id) {
     switch (id) {
       case "I_E":                       return 10; // needs higher prio than EN_COMPOUNDS ("i.e learning")
+      case "YEAR_OLD_HYPHEN":           return 6;  // higher prio than MISSING_HYPHEN
       case "MISSING_HYPHEN":            return 5;
       case "TRANSLATION_RULE":          return 5;   // Premium
       case "WRONG_APOSTROPHE":          return 5;
@@ -257,6 +258,7 @@ public class English extends Language implements AutoCloseable {
       case "ABBREVIATION_PUNCTUATION":  return 2;
       case "FEDEX":                     return 2;   // higher prio than many verb rules (e.g. MD_BASEFORM)
       case "COVID_19":                  return 1;
+      case "QUIET_QUITE":               return 1;   // higher prio than A_QUITE_WHILE
       case "A_OK":                      return 1;   // prefer over A_AN
       case "I_A":                       return 1;   // higher prio than I_IF
       case "GOT_GO":                    return 1;   // higher prio than MD_BASEFORM
@@ -344,6 +346,8 @@ public class English extends Language implements AutoCloseable {
       case "VBZ_VBD":                   return -1;  // prefer other more specific rules (e.g. IS_WAS)
       case "SUPERLATIVE_THAN":          return -1;  // prefer other more specific rules
       case "UNLIKELY_OPENING_PUNCTUATION": return -1; // prefer other more specific rules
+      case "METRIC_UNITS_EN_IMPERIAL":  return -1;  // prefer MILE_HYPHEN
+      case "METRIC_UNITS_EN_GB":        return -1;  // prefer MILE_HYPHEN
       case "PRP_RB_NO_VB":              return -2;  // prefer other more specific rules (with suggestions)
       case "PRP_VBG":                   return -2;  // prefer other more specific rules (with suggestions, prefer over HE_VERB_AGR)
       case "PRP_VBZ":                   return -2;  // prefer other more specific rules (with suggestions)

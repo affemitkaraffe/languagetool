@@ -3243,6 +3243,10 @@ Copyright (C) 2012 Jaume Ortolà i Font
     </rulegroup>
     <rulegroup id="SegPersSing" name="verb segona persona singular">
         <rule>
+            <antipattern>
+                <token postag="N.*|A.*|V.P.*" postag_regexp="yes"/>
+                <token>?</token>
+            </antipattern>
             <pattern>
                 <!-- cal revisar amb cura |UNKNOWN -->
                 <token postag="(DD|PD).*|V.*|P[P0].*|NP.*|NC.*" postag_regexp="yes"><exception postag="C.*|R.*|DA.*|V.N.*|PT.*" postag_regexp="yes"/><exception regexp="yes">tu|e[mts]|[mts]e|ens|us|[mtsln]'|'[mtsln]|'ls|'ns|li|els?|la|les|en|hi|ho|any|dia</exception></token>
@@ -3252,7 +3256,6 @@ Copyright (C) 2012 Jaume Ortolà i Font
                         <token postag="N.*|A.*|V.P.*" postag_regexp="yes"/>
                     </and>
                 </marker>
-                <token><exception>?</exception></token>
             </pattern>
             <disambig action="remove" postag="V.[IS].2S0."/>
             <!-- les ha vistes estenent la roba -->
@@ -4101,8 +4104,21 @@ Copyright (C) 2012 Jaume Ortolà i Font
         <disambig action="filter" postag="N.*|.*_GN_.*"/>
     </rule>
     <rulegroup id="fer_nom" name="fer + nom/adj: elimina el participi">
-        <!-- fer amistat, costat, aliat, etc. -->
         <rule>
+            <!-- de fes -->
+            <pattern>
+                <token postag="SPS00|LOC_PREP" postag_regexp="yes"/>
+                <marker>
+                    <and>
+                        <token inflected="yes">fer</token>
+                        <token postag="NC.*|A.*" postag_regexp="yes"/>
+                    </and>
+                </marker>
+            </pattern>
+            <disambig action="remove" postag="V.[^PN].*"/>
+        </rule>
+        <rule>
+            <!-- fer amistat, costat, aliat, etc. -->
             <pattern>
                 <token inflected="yes" regexp="yes">fer|donar<exception regexp="yes">dona|dones</exception></token>
                 <marker>
@@ -15786,7 +15802,40 @@ Copyright (C) 2012 Jaume Ortolà i Font
             </disambig>
         </rule>
     </rulegroup>
-    <rulegroup id="ignore_numbers" name="ignore spelling numbers">
+    <rulegroup name="Ignore spelling numbers " id="IGNORE_NUMBERS">
+        <rule>
+            <!-- style rules can be suggested for these abbreviations -->
+            <pattern>
+                <token regexp="yes">([012][0-9][\.,])?[0-6]?[0-9]</token>
+                <token regexp="yes" case_sensitive="yes">pm|am|PM|AM|GMT|CEST|UTC|EST</token>
+            </pattern>
+            <disambig action="ignore_spelling"/>
+        </rule>
+        <rule>
+            <pattern>
+                <token regexp="yes">[\d ,\.]+[x⁄][\d ,\.]+</token>
+            </pattern>
+            <disambig action="ignore_spelling"/>
+        </rule>
+        <rule>
+            <antipattern case_sensitive="yes">
+                <token regexp="yes">[A-Z]+</token>
+                <token spacebefore="no">-</token>
+                <token spacebefore="no">[A-Z]+</token>
+            </antipattern>
+            <pattern case_sensitive="yes">
+                <token regexp="yes">[A-Z0-9]+</token>
+                <token spacebefore="no">-</token>
+                <token spacebefore="no" regexp="yes">[A-Z0-9]+</token>
+            </pattern>
+            <disambig action="ignore_spelling"/>
+        </rule>
+        <rule>
+            <pattern>
+                <token regexp="yes" case_sensitive="yes">[A-Z]+\d+<exception>CO2</exception></token>
+            </pattern>
+            <disambig action="ignore_spelling"/>
+        </rule>
         <rule>
             <pattern>
                 <token regexp="yes">([01]?\d|2[0-3])h[0-5]?\d(min|m)([0-5]?\ds)?</token>
@@ -15800,10 +15849,8 @@ Copyright (C) 2012 Jaume Ortolà i Font
             <disambig action="ignore_spelling"/>
         </rule>
         <rule>
-            <pattern>
-                <marker>
-                    <token regexp="yes">[\d\., ]+⁄[\d\., ]+</token>
-                </marker>
+            <pattern case_sensitive="yes">
+                <token regexp="yes">\d{3,}[A-Z]+</token>
             </pattern>
             <disambig action="ignore_spelling"/>
         </rule>

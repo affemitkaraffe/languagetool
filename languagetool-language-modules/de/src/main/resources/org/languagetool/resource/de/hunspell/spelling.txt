@@ -10725,7 +10725,6 @@ rausgefallen/A #ugs
 Nicola Sturgeon/S #name
 SNP/S #abk #name
 Summary/S #eng
-Best Practice/S #eng
 Lean Management/S #eng
 Lean Production #eng
 Showcase/S #eng
@@ -18941,7 +18940,6 @@ Blotzheim/S #name
 Grüffelo/S #name
 Rösterei
 Röstereien
-Commit/S #eng
 Return on Investment #eng
 Love-Parade/S #name
 zerdenken #ugs
@@ -20621,7 +20619,6 @@ Konsolenbefehl/ES
 Karim/S #name
 Merchant/S #eng
 Outro/S #eng
-Miles & More #name
 Edelweiss Air/S #name
 Connect Box #name
 Sushi for Friends #name
@@ -21402,7 +21399,6 @@ Bescheiderteilung
 Bescheiderteilungen
 Dimmschalter/NS
 Trackinglink/S
-Supreme Court #eng
 Bafin #name
 Solarisbank #name
 solarisBank #name
@@ -21712,9 +21708,7 @@ Raab/S #name
 Remdesivir/S #name
 Zoe/S #name
 Zoé/S #name
-Zoë/S #name
 Prämienticket/S
-Cancún/S #name
 Bollinger/S #name
 Eggert/S #name
 Geld-zurück-Garantie/N
@@ -22293,3 +22287,223 @@ Tiefenstrukturmerkmal/S
 Tiefenstrukturmerkmale/N
 wohnfertig/A
 Wonneproppen/S #ugs
+durcheinandergekommen/A
+Reggaeton/S #name
+hinterher_spionieren
+rüber_lassen #ugs
+rüber_reichen #ugs
+rein_mischen #ugs
+rein_bekommen #ugs
+rein_müssen #ugs
+rum_drehen #ugs
+rein_wollen #ugs
+raus_wollen #ugs
+rein_posten #ugs
+runter_voten #ugs
+rauf_voten #ugs
+raus_transportieren #ugs
+runter_transportieren #ugs
+rein_kopieren #ugs
+umher_kutschieren #ugs
+runter_kippen #ugs
+rein_greifen #ugs
+rein_drücken #ugs
+raus_drücken #ugs
+zurück_wechseln
+raus_kaufen #ugs
+rüber_transportieren #ugs
+runter_stufen #ugs
+rauf_stufen #ugs
+rum_tragen #ugs
+rum_kommen #ugs
+rein_spritzen #ugs
+rein_kippen #ugs
+#rein_schießen
+rein_schieben #ugs
+rein_begeben
+reinscrollen
+reinscrolle
+reinscrollte
+reinscrollten
+reinscrollst
+reinscrolltest
+reinscrollt
+reingescrollt
+reinzuscrollen
+Reismilch
+Reisdrink/S
+breiförmig/A
+Bezeichnungsschutz
+Bezeichnungsschutzes
+Kokkoh
+Anwalzmaschine/N
+Bemusterungsprotokoll/S
+Bemusterungsprotokolle/N
+Beringer
+Beringungsvorgänge/N
+Beringungsvorgang/S
+Betroffenheitsanalyse/N
+Biegebeanspruchung
+Biegebeanspruchungen
+Brenda/S #name
+Darlegungslast
+Darlegungslasten
+Driftwinkel/NS
+Entschleuniger/NS
+Entzunderung
+Exception/S
+Festigungsphase/N
+Großröhrsdorf/S #name
+Herausgeberbrief/S
+Herausgeberbriefe/NS
+Kackspaten/S
+Kampagnenanalyse/N
+Kryptomärkte/N
+Kryptomarkt
+Kryptomarktes
+Löningen/S #name
+Maximilianstr. #name
+Maximilianstraße #name
+Overlock-Maschine/N
+Overlock-Nähmaschine/N
+Overlock-Stich/S
+Overlockstich/S
+Personalienblatt/S
+Rallyeteam/S
+Referendarverein/S
+Referendarvereine/NS
+Rheinenser/NS #name
+Rheinenserin #name
+Rheinenserinnen #name
+Schürftiefe/N
+Schonach/S #name
+Skyr
+soziokratisch/A
+Spielzeug-Schminkset/S
+Spielzeug-Schmink-Set/S
+steuerwirksam/A
+Storchenküken/S
+Teichgebiet/S
+Teichgebiete/NS
+Traditionsprodukt
+Traditionsprodukte/NS
+Unterdrückungsstaat
+Unterdrückungsstaaten
+Unterdrückungsstaates
+verhemmt/A
+Versicherungsnehmerwechsel/NS
+zellbasiert/A
+Ziehangel/N
+Saalbach-Hinterglemm/S #name
+zurück_projizieren
+reinfließen
+reinfließe
+reinfließt
+reinzufließen
+reingeflossen
+rum_geistern #ugs
+rum_meckern #ugs
+heraus_befördern
+rum_lümmeln #ugs
+rein_schieben
+rein_füllen
+heraus_sortieren
+rum_zicken #ugs
+rum_schachern #ugs
+rum_erzählen
+runtergehungert/A
+rumreißen #ugs
+rumreiße #ugs
+rumreißt #ugs
+rumrissen #ugs
+rumgerissen #ugs
+rumzureißen #ugs
+raus_putzen #ugs
+raus_löschen
+runter_brechen
+rum_quälen #ugs
+rum_kommen
+rübergetragen
+raus_winken
+rein_sollen
+runter_schalten
+rum_reiten #ugs
+raus_hören
+raus_gucken
+raus_hauen #ugs
+rum_hocken #ugs
+rein_regnen
+linksgesinnt/A
+rechtsgesinnt/A
+Hildmann/S #name
+Richard Branson/S #name
+Goretzka/S #name
+NetWeaver/S #name
+ABAP/S #abk
+Salvini/S #name
+Kalabrier/SN
+Ibišević
+Ochsenknecht/S #name
+Kaczyński/S #name
+Fünfzigprozentmarke/N
+PiS #name
+computertomografisch/A
+zuschlagsfähig/A
+Kartoffelstampf/S
+Kartoffelstampfes
+reinfloss
+zurück_navigieren
+rum_reden #ugs
+zurück_wollen
+zurück_mögen
+rein_laufen
+rein_setzen
+rein_denken
+reinschmeißen #ugs
+reinschmeißt #ugs
+reingeschmissen #ugs
+hinein_verschieben
+rein_arbeiten #ugs
+rein_sehen
+rein_flattern #ugs
+rein_sprechen
+rüber_senden #ugs
+rein_drehen
+rum_schrauben #ugs
+runtergerechnet/A
+runter_fahren
+zurück_loben
+rein_rennen
+rum_schreien #ugs
+raus_treiben
+zurück_importieren
+rein_versetzen
+rein_pumpen
+rein_platzen #ugs
+raus_sollen
+rausfließen
+rausfließt
+rausfließe
+rausgeflossen/A
+raus_bekommen
+umher_schicken
+rum_klicken #ugs
+runter_wollen
+raus_boxen #ugs
+rüber_ziehen
+rein_spucken
+runter_rollen
+runterreißen #ugs
+runterreiße #ugs
+runterreißt #ugs
+runtergerissen/A #ugs
+runter_stellen
+rein_rutschen
+herum_spammen #ugs
+hinaus_hüpfen
+rum_schicken #ugs
+raus_kitzeln #ugs
+runter_müssen
+rum_wühlen #ugs
+rum_fahren
+rein_stolpern

@@ -135,13 +135,17 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
                      !k.getReplacement().startsWith("inter ") &&
                      !k.getReplacement().startsWith("sub ") &&
                      !k.getReplacement().startsWith("auto ") &&
+                     !k.getReplacement().startsWith("sh ") &&
                      !k.getReplacement().startsWith("dis ") &&
+                     !k.getReplacement().startsWith("mu ") &&
                      !k.getReplacement().endsWith(" able") &&
+                     !k.getReplacement().endsWith(" less") && // (e.g. permissionless)
                      !k.getReplacement().endsWith(" sly") && // uneccesary suggestion (e.g. for continuesly)
                      !k.getReplacement().endsWith(" OO") && // unecessary suggestion (e.g. for "HELLOOO")
                      !k.getReplacement().endsWith(" HHH") && // unecessary suggestion (e.g. for "OHHHH")
                      !k.getReplacement().endsWith(" ally") && // adverbs ending in "ally" that LT doesn't know (yet)
                      !k.getReplacement().endsWith(" ize") && // "advertize"
+                     !k.getReplacement().endsWith(" sh") &&
                      !k.getReplacement().endsWith(" en") && // "Antwerpen" suggests "Antwerp en"
                      !k.getReplacement().endsWith(" ed"))
         .collect(Collectors.toList());
@@ -239,6 +243,9 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
     Map<String, List<String>> s = new HashMap<>();
     s.put("xml", Arrays.asList("XML"));
     s.put("php", Arrays.asList("PHP"));
+    s.put("json", Arrays.asList("JSON", "Jason"));
+    s.put("http", Arrays.asList("HTTP"));
+    s.put("https", Arrays.asList("HTTPS"));
     s.put("asp", Arrays.asList("ASP"));
     s.put("rss", Arrays.asList("RSS"));
     s.put("ssd", Arrays.asList("SSD"));
@@ -335,6 +342,7 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
     s.put("interweb", Arrays.asList("internet"));
     s.put("interwebs", Arrays.asList("internet"));
     s.put("srilanka", Arrays.asList("Sri Lanka"));
+    s.put("tiktok", Arrays.asList("TikTok"));
 
     s.put("afro-american", Arrays.asList("Afro-American"));
     s.put("oconnor", Arrays.asList("O'Connor"));
@@ -353,6 +361,8 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
     s.put("g-mail", Arrays.asList("Gmail"));
     s.put("playstation", Arrays.asList("PlayStation"));
     s.put("wix", Arrays.asList("Wix"));
+    s.put("nazi", Arrays.asList("Nazi"));
+    s.put("nazis", Arrays.asList("Nazis"));
     return s;
   }
 
@@ -470,6 +480,10 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
     s.put("Prio", Arrays.asList("Priority"));
     s.put("prio", Arrays.asList("priority"));
     s.put("Ecommerce", Arrays.asList("E-Commerce"));
+    s.put("ezine", Arrays.asList("e-zine"));
+    s.put("Ezine", Arrays.asList("E-zine"));
+    s.put("ezines", Arrays.asList("e-zines"));
+    s.put("Ezines", Arrays.asList("E-zines"));
     s.put("ebook", Arrays.asList("e-book"));
     s.put("ebooks", Arrays.asList("e-books"));
     s.put("eBook", Arrays.asList("e-book"));
@@ -651,6 +665,15 @@ public abstract class AbstractEnglishSpellerRule extends MorfologikSpellerRule {
     s.put("specicities", Arrays.asList("specificities"));
     s.put("Specifities", Arrays.asList("Specificities"));
     s.put("Specicities", Arrays.asList("Specificities"));
+    s.put("Neonazi", Arrays.asList("Neo-Nazi"));
+    s.put("Neonazis", Arrays.asList("Neo-Nazis"));
+    s.put("neonazi", Arrays.asList("neo-Nazi"));
+    s.put("neonazis", Arrays.asList("neo-Nazis"));
+    s.put("fiveteen", Arrays.asList("fifteen"));
+    s.put("Fiveteen", Arrays.asList("Fifteen"));
+    s.put("critism", Arrays.asList("criticism"));
+    s.put("Critism", Arrays.asList("Criticism"));
+
     return s;
   }
 

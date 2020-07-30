@@ -35,6 +35,7 @@ public class EnglishConfusionProbabilityRule extends ConfusionProbabilityRule {
   private static final List<String> EXCEPTIONS = Arrays.asList(
       // Use all-lowercase, matches will be case-insensitive.
       // See https://github.com/languagetool-org/languagetool/issues/1678
+      "your (",   // ... so your (English) signature gets ...
       "your slack profile",
       "host to five",   // "... is host to five classical music orchestras"
       "had I known",
@@ -306,7 +307,17 @@ public class EnglishConfusionProbabilityRule extends ConfusionProbabilityRule {
       "my order", // vs by
       "of you being her", // vs your
       "ad free",
-      "your call is" // vs you
+      "ad rates",
+      "your call is", // vs you
+      "on his butt",
+      "message us today",
+      "sent you the invite",
+      "appreciate you fowarding",
+      "appreciate you cooking",
+      "appreciate you sending",
+      "appreciate you talking",
+      "appreciate you taking",
+      "that now means"
     );
     
   public EnglishConfusionProbabilityRule(ResourceBundle messages, LanguageModel languageModel, Language language) {
