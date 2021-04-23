@@ -38,7 +38,9 @@ import org.languagetool.tokenizers.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -65,7 +67,7 @@ public abstract class Language {
   private final Pattern ignoredCharactersRegex = Pattern.compile("[\u00AD]");  // soft hyphen
   
   private List<AbstractPatternRule> patternRules;
-  private boolean noLmWarningPrinted;
+  private final AtomicBoolean noLmWarningPrinted = new AtomicBoolean();
 
   private Disambiguator disambiguator;
   private Tagger tagger;
@@ -168,9 +170,8 @@ public abstract class Language {
       File topIndexDir = new File(indexDir, getShortCode());
       if (topIndexDir.exists()) {
         languageModel = new LuceneLanguageModel(topIndexDir);
-      } else if (!noLmWarningPrinted) {
+      } else if (noLmWarningPrinted.compareAndSet(false, true)) {
         System.err.println("WARN: ngram index dir " + topIndexDir + " not found for " + getName());
-        noLmWarningPrinted = true;
       }
     }
     return languageModel;
@@ -322,7 +323,7 @@ public abstract class Language {
   /**
    * Get this language's part-of-speech disambiguator implementation.
    */
-  public Disambiguator getDisambiguator() {
+  public synchronized Disambiguator getDisambiguator() {
     if (disambiguator == null) {
       disambiguator = createDefaultDisambiguator();
     }
@@ -351,7 +352,7 @@ public abstract class Language {
    * Get this language's part-of-speech tagger implementation.
    */
   @NotNull
-  public Tagger getTagger() {
+  public synchronized Tagger getTagger() {
     if (tagger == null) {
       tagger = createDefaultTagger();
     }
@@ -376,7 +377,7 @@ public abstract class Language {
   /**
    * Get this language's sentence tokenizer implementation.
    */
-  public SentenceTokenizer getSentenceTokenizer() {
+  public synchronized SentenceTokenizer getSentenceTokenizer() {
     if (sentenceTokenizer == null) {
       sentenceTokenizer = createDefaultSentenceTokenizer();
     }
@@ -402,7 +403,7 @@ public abstract class Language {
   /**
    * Get this language's word tokenizer implementation.
    */
-  public Tokenizer getWordTokenizer() {
+  public synchronized Tokenizer getWordTokenizer() {
     if (wordTokenizer == null) {
       wordTokenizer = createDefaultWordTokenizer();
     }
@@ -431,7 +432,7 @@ public abstract class Language {
    * @since 2.3
    */
   @Nullable
-  public Chunker getChunker() {
+  public synchronized Chunker getChunker() {
     if (chunker == null) {
       chunker = createDefaultChunker();
     }
@@ -460,7 +461,7 @@ public abstract class Language {
    * @since 2.9
    */
   @Nullable
-  public Chunker getPostDisambiguationChunker() {
+  public synchronized Chunker getPostDisambiguationChunker() {
     if (postDisambiguationChunker == null) {
       postDisambiguationChunker = createDefaultPostDisambiguationChunker();
     }
@@ -488,7 +489,7 @@ public abstract class Language {
    * Get this language's part-of-speech synthesizer implementation or {@code null}.
    */
   @Nullable
-  public Synthesizer getSynthesizer() {
+  public synchronized Synthesizer getSynthesizer() {
     if (synthesizer == null) {
       synthesizer = createDefaultSynthesizer();
     }
@@ -710,6 +711,12 @@ public abstract class Language {
    * @since 3.6
    */
   protected int getPriorityForId(String id) {
+    if (id.equalsIgnoreCase("TOO_LONG_SENTENCE")) {
+      return -101;  // don't hide spelling errors
+    }
+    if (id.equalsIgnoreCase("STYLE")) {  // category
+      return -50;  // don't let style issues hide more important errors
+    }
     return 0;
   }
   
@@ -752,13 +759,93 @@ public abstract class Language {
   }
 
   /** @since 5.1 */
-  public String getOpeningQuote() {
+  public String getOpeningDoubleQuote() {
     return "\"";
   }
 
   /** @since 5.1 */
-  public String getClosingQuote() {
+  public String getClosingDoubleQuote() {
     return "\"";
+  }
+  
+  /** @since 5.1 */
+  public String getOpeningSingleQuote() {
+    return "'";
+  }
+
+  /** @since 5.1 */
+  public String getClosingSingleQuote() {
+    return "'";
+  }
+  
+  /** @since 5.1 */
+  public boolean isAdvancedTypographyEnabled() {
+    return false;
+  }
+  
+  /** @since 5.1 */
+  public String toAdvancedTypography(String input) {
+    if (!isAdvancedTypographyEnabled()) {
+      return input.replaceAll("<suggestion>", getOpeningDoubleQuote()).replaceAll("</suggestion>", getClosingDoubleQuote());
+    }
+    String output = input;
+   
+    //Preserve content inside <suggestion></suggestion>
+    final Pattern INSIDE_SUGGESTION = Pattern.compile("<suggestion>(.+?)</suggestion>");
+    List<String> preservedStrings = new ArrayList<>();
+    int countPreserved = 0; 
+    Matcher m = INSIDE_SUGGESTION.matcher(output);
+    int offset = 0;
+    while (m.find(offset)) {
+      String group = m.group(1);
+      preservedStrings.add(group);
+      output = output.replaceFirst("<suggestion>" + group + "</suggestion>", "\\\\" + String.valueOf(countPreserved));
+      countPreserved++;
+      offset = m.end();
+    }
+    
+    // Ellipsis (for all languages?)
+    output = output.replaceAll("\\.\\.\\.", "…");
+    
+    // non-breaking space
+    output = output.replaceAll("\\b([a-zA-Z]\\.) ([a-zA-Z]\\.)", "$1\u00a0$2");
+    output = output.replaceAll("\\b([a-zA-Z]\\.) ", "$1\u00a0");
+    
+    // Apostrophe
+    final Pattern APOSTROPHE = Pattern.compile("([\\p{L}\\d-])'([\\p{L}«])",
+        Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    
+    Matcher matcher = APOSTROPHE.matcher(output);
+    output = matcher.replaceAll("$1’$2");
+    
+    // single quotes
+    if (output.startsWith("'")) { 
+      output = output.replaceFirst("'", getOpeningSingleQuote());
+    }
+    if (output.endsWith("'")) { 
+      output = output.substring(0, output.length() - 1 ) + getClosingSingleQuote();
+    }
+    output = output.replaceAll(" '(.)'", " " + getOpeningSingleQuote()+"$1"+getClosingSingleQuote()); //exception single character
+    output = output.replaceAll("([\\u202f\\u00a0 «\"\\(])'", "$1" + getOpeningSingleQuote());
+    output = output.replaceAll("'([\u202f\u00a0 !\\?,\\.;:\"\\)])", getClosingSingleQuote() + "$1");
+    output = output.replaceAll("‘s\\b([^’])", "’s$1"); // exception genitive
+    
+    // double quotes
+    if (output.startsWith("\"")) { 
+      output = output.replaceFirst("\"", getOpeningDoubleQuote());
+    }
+    if (output.endsWith("\"")) { 
+      output = output.substring(0, output.length() - 1 ) + getClosingDoubleQuote();
+    }
+    output = output.replaceAll("([ \\(])\"", "$1" + getOpeningDoubleQuote());
+    output = output.replaceAll("\"([\\u202f\\u00a0 !\\?,\\.;:\\)])", getClosingDoubleQuote() + "$1");   
+    
+    //restore suggestions
+    for (int i=0; i<preservedStrings.size(); i++) {
+      output= output.replaceFirst("\\\\" + String.valueOf(i), getOpeningDoubleQuote() + preservedStrings.get(i) + getClosingDoubleQuote() );
+    }
+    
+    return output.replaceAll("<suggestion>", getOpeningDoubleQuote()).replaceAll("</suggestion>", getClosingDoubleQuote());
   }
 
   /**

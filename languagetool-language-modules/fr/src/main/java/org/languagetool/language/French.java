@@ -107,11 +107,14 @@ public class French extends Language implements AutoCloseable {
             new UppercaseSentenceStartRule(messages, this),
             new MultipleWhitespaceRule(messages, this),
             new SentenceWhitespaceRule(messages),
+            new LongSentenceRule(messages, userConfig, 40, true, true),
+            new LongParagraphRule(messages, this, userConfig),
             // specific to French:
             new CompoundRule(messages),
             new QuestionWhitespaceStrictRule(messages, this),
             new QuestionWhitespaceRule(messages, this),
-            new SimpleReplaceRule(messages)
+            new SimpleReplaceRule(messages),
+            new AnglicismReplaceRule(messages)
     );
   }
 
@@ -138,15 +141,70 @@ public class French extends Language implements AutoCloseable {
     languageModel = initLanguageModel(indexDir, languageModel);
     return languageModel;
   }
-
+  
   /** @since 5.1 */
-  public String getOpeningQuote() {
-    return "« ";
+  @Override
+  public String getOpeningDoubleQuote() {
+    return "«";
   }
 
   /** @since 5.1 */
-  public String getClosingQuote() {
-    return " »";
+  @Override
+  public String getClosingDoubleQuote() {
+    return "»";
+  }
+  
+  /** @since 5.1 */
+  @Override
+  public String getOpeningSingleQuote() {
+    return "‘";
+  }
+
+  /** @since 5.1 */
+  @Override
+  public String getClosingSingleQuote() {
+    return "’";
+  }
+  
+  /** @since 5.1 */
+  @Override
+  public boolean isAdvancedTypographyEnabled() {
+    return true;
+  }
+  
+  @Override
+  public String toAdvancedTypography (String input) {
+    String output = super.toAdvancedTypography(input);
+  
+    // special cases: apostrophe + quotation marks
+    String beforeApostrophe = "([cjnmtsldCJNMTSLD]|qu|jusqu|lorsqu|puisqu|quoiqu|Qu|Jusqu|Lorsqu|Puisqu|Quoiqu|QU|JUSQU|LORSQU|PUISQU|QUOIQU)";
+    output = output.replaceAll("(\\b"+beforeApostrophe+")'", "$1’");
+    output = output.replaceAll("(\\b"+beforeApostrophe+")’\"", "$1’" + getOpeningDoubleQuote());
+    output = output.replaceAll("(\\b"+beforeApostrophe+")’'", "$1’" + getOpeningSingleQuote());
+    
+    // non-breaking (thin) space 
+    // according to https://fr.wikipedia.org/wiki/Espace_ins%C3%A9cable#En_France
+    output = output.replaceAll("\u00a0;", "\u202f;");
+    output = output.replaceAll("\u00a0!", "\u202f!");
+    output = output.replaceAll("\u00a0\\?", "\u202f?");
+    output = output.replaceAll(";", "\u202f;");
+    output = output.replaceAll("!", "\u202f!");
+    output = output.replaceAll("\\?", "\u202f?");
+    
+    output = output.replaceAll(":", "\u00a0:");
+    output = output.replaceAll("»", "\u00a0»");
+    output = output.replaceAll("«", "«\u00a0");
+    
+    //remove duplicate spaces
+    output = output.replaceAll("\u00a0\u00a0", "\u00a0");
+    output = output.replaceAll("\u202f\u202f", "\u202f");
+    output = output.replaceAll("  ", " ");
+    output = output.replaceAll("\u00a0 ", "\u00a0");
+    output = output.replaceAll(" \u00a0", "\u00a0");
+    output = output.replaceAll(" \u202f", "\u202f");
+    output = output.replaceAll("\u202f ", "\u202f");
+    
+    return output;
   }
 
   /**
@@ -167,21 +225,37 @@ public class French extends Language implements AutoCloseable {
 
   @Override
   protected int getPriorityForId(String id) {
-    switch (id) {
+    switch (id) { 
+      case "FR_COMPOUNDS": return 50; // greater than agreement rules
+      case "AGREEMENT_EXCEPTIONS": return 10; // greater than D_N
+      case "EXPRESSIONS_VU": return 10; // greater than A_ACCENT_A
+      case "SA_CA": return 10; // greater than D_N
+      case "MA": return 10; // greater than D_J
+      case "A_INFINITIF": return 10;
+      case "LEURS_LEUR": return 10; // greater than N_V
       case "DU_DU": return 10; // greater than DU_LE
       case "ACCORD_CHAQUE": return 10; // greater than ACCORD_NOMBRE
       case "CEST_A_DIRE": return 10; // greater than A_A_ACCENT
       case "ESPACE_UNITES": return 1; // needs to have higher priority than spell checker
       case "BYTES": return 1; // needs to be higher than spell checker for 10MB style matches
       case "Y_A": return 1; // needs to be higher than spell checker for style suggestion
-      case "A_A_ACCENT": return 1; // triggers false alarms for IL_FAUT_INF if there is no a/à correction
-      case "FRENCH_WHITESPACE_STRICT": return 1;  // default off, but if on, it should overwrite FRENCH_WHITESPACE 
-      case "FRENCH_WHITESPACE": return 0;
+      case "A_A_ACCENT": return 1; // triggers false alarms for IL_FAUT_INF if there is no a/à correction 
+      case "JE_M_APPEL": return 1;  // override NON_V
+      case "ACCORD_R_PERS_VERBE": return 1;  // match before POSER_UNE_QUESTION
       case "JE_SUI": return 1;  // needs higher priority than spell checker
+      //case "D_N": return 1; // needs to have higher priority than agreement postponed adj | Commented out because many other rules should be higher
+      //case "ACCORD_COULEUR": return 1; // needs to have higher priority than agreement postponed adj
+      case "CONFUSION_PAR_PART": return -1;  // turn off completely when PART_OU_PAR is activated
+      case "FR_SIMPLE_REPLACE": return -10;
+      case "IMP_PRON": return -10; // less than D_N
+      case "TOO_LONG_PARAGRAPH": return -15;
+      case "VERB_PRONOUN": return -50; // greater than FR_SPELLING_RULE; less than ACCORD_V_QUESTION
+      case "AGREEMENT_POSTPONED_ADJ": return -50;
       case "FR_SPELLING_RULE": return -100;
       case "ELISION": return -200; // should be lower in priority than spell checker
-      case "NONVERB_PRON": return -200; // show the suggestion by the spell checker if exists
       case "UPPERCASE_SENTENCE_START": return -300;
+      case "FRENCH_WHITESPACE_STRICT": return -350; // picky; if on, it should overwrite FRENCH_WHITESPACE
+      case "FRENCH_WHITESPACE": return -400; // lesser than UPPERCASE_SENTENCE_START and FR_SPELLING_RULE
     }
     if (id.startsWith("grammalecte_")) {
       return -150;

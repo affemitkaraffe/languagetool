@@ -65,12 +65,12 @@ public class Russian extends Language implements AutoCloseable {
   @NotNull
   @Override
   public Tagger createDefaultTagger() {
-    return new RussianTagger();
+    return RussianTagger.INSTANCE;
   }
 
   @Override
   public Disambiguator createDefaultDisambiguator() {
-    return new RussianHybridDisambiguator();
+    return RussianHybridDisambiguator.INSTANCE;
   }
 
   @Nullable
@@ -90,6 +90,36 @@ public class Russian extends Language implements AutoCloseable {
             new Contributor("Yakov Reztsov", "http://myooo.ru/content/view/83/43/")
     };
   }
+  
+  /** @since 5.1 */
+  @Override
+  public String getOpeningDoubleQuote() {
+    return "«";
+  }
+
+  /** @since 5.1 */
+  @Override
+  public String getClosingDoubleQuote() {
+    return "»";
+  }
+  
+  /** @since 5.1 */
+  @Override
+  public String getOpeningSingleQuote() {
+    return "‘";
+  }
+
+  /** @since 5.1 */
+  @Override
+  public String getClosingSingleQuote() {
+    return "’";
+  }
+  
+  /** @since 5.1 */
+  @Override
+  public boolean isAdvancedTypographyEnabled() {
+    return true;
+  }
 
   @Override
   public List<Rule> getRelevantRules(ResourceBundle messages, UserConfig userConfig, Language motherTongue, List<Language> altLanguages) throws IOException {
@@ -105,12 +135,12 @@ public class Russian extends Language implements AutoCloseable {
             new WordRepeatRule(messages, this),
             new MultipleWhitespaceRule(messages, this),
 	    new SentenceWhitespaceRule(messages),
-            new WhiteSpaceBeforeParagraphEnd(messages, this),  //    
+            new WhiteSpaceBeforeParagraphEnd(messages, this),  
             new WhiteSpaceAtBeginOfParagraph(messages),
         //  new EmptyLineRule(messages, this),  // too picky rule 
             new LongSentenceRule(messages, userConfig),
             new LongParagraphRule(messages, this, userConfig),
-            new ParagraphRepeatBeginningRule(messages, this),
+            new ParagraphRepeatBeginningRule(messages, this),   //re-activate rule, issue #3509
             new RussianFillerWordsRule(messages, this, userConfig),
         //  new PunctuationMarkAtParagraphEnd(messages, this),
             new PunctuationMarkAtParagraphEnd2(messages, this),  //
@@ -163,4 +193,13 @@ public class Russian extends Language implements AutoCloseable {
   public LanguageMaintainedState getMaintainedState() {
     return LanguageMaintainedState.ActivelyMaintained;
   }
+
+  @Override
+  protected int getPriorityForId(String id) {
+    switch (id) {
+      case "TOO_LONG_PARAGRAPH": return -15;
+    }
+    return super.getPriorityForId(id);
+  }
+
 }

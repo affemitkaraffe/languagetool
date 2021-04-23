@@ -18,15 +18,6 @@
  */
 package org.languagetool.rules.de;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ResourceBundle;
-import java.util.Set;
-
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -46,7 +37,13 @@ import org.languagetool.tagging.disambiguation.rules.DisambiguationPatternRule;
 import org.languagetool.tools.StringTools;
 import org.languagetool.tools.Tools;
 
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import static org.languagetool.rules.patterns.PatternRuleBuilderHelper.*;
+import static org.languagetool.tools.StringTools.startsWithUppercase;
 
 /**
  * Simple agreement checker for German noun phrases. Checks agreement in:
@@ -67,6 +64,7 @@ import static org.languagetool.rules.patterns.PatternRuleBuilderHelper.*;
 public class AgreementRule extends Rule {
 
   private final German language;
+  private final Supplier<List<DisambiguationPatternRule>> antiPatterns;
 
   private JLanguageTool lt;
 
@@ -83,7 +81,27 @@ public class AgreementRule extends Rule {
   private static final AnalyzedToken[] INS_REPLACEMENT = {new AnalyzedToken("das", "ART:DEF:AKK:SIN:NEU", "das")};
   private static final AnalyzedToken[] ZUR_REPLACEMENT = {new AnalyzedToken("der", "ART:DEF:DAT:SIN:FEM", "der")};
 
+  enum ReplacementType {
+    Ins, Zur
+  }
+
   private static final List<List<PatternToken>> ANTI_PATTERNS = Arrays.asList(
+    Arrays.asList(
+      posRegex("VER:MOD:.*"),  // "Sollten zu diesem weitere Informationen benötigt werden, ..."
+      token("zu"),
+      regex("diese[mnr]"),
+      new PatternTokenBuilder().posRegex("ADJ:.*").min(0).build(),
+      posRegex("SUB:NOM:PLU:.*"),
+      posRegex("PA2:.*")
+    ),
+    Arrays.asList(
+      regex("ein|das"),  // "Ein Geschenk, das Maßstäbe setzt" (#4043)
+      pos("SUB:NOM:SIN:NEU"),
+      token(","),
+      token("das"),
+      posRegex("SUB:NOM:PLU:.*"),
+      posRegex("VER:3:.*")
+    ),
     Arrays.asList(
       token("uns"),  // "und wünschen uns allen Gesundheit."
       token("allen"),
@@ -101,12 +119,12 @@ public class AgreementRule extends Rule {
       token("Homburger")
     ),
     Arrays.asList(
-      tokenRegex("der|die|das"),   // "Lieber jemanden, der einem Tipps gibt."
-      token("einem"),
-      posRegex("SUB:.*:PLU:.*")
+      tokenRegex("der|die|das"),   // "Lieber jemanden, der einem Tipps/Hoffnung gibt." / "die 69er Revolte"
+      csRegex("einem|[0-9]+er"),
+      posRegex("SUB:.*")
     ),
     Arrays.asList(
-      tokenRegex("der|des"),   // "Die dauerhafte Abgrenzung des später Niedersachsen genannten Gebietes"
+      tokenRegex("de[rs]"),   // "Die dauerhafte Abgrenzung des später Niedersachsen genannten Gebietes"
       posRegex("ADJ:.*"),
       posRegex("EIG:.*"),
       posRegex("PA2:.*")
@@ -209,7 +227,7 @@ public class AgreementRule extends Rule {
       regex("der|die|das"),
       regex("anderen?"),
       token("Recht"),
-      regex("hat|hatte|habe|haben|gehabt")
+      new PatternTokenBuilder().csToken("haben").matchInflectedForms().build()
     ),
     Arrays.asList(  // "als einziger ein für die anderen unsichtbares Wunder zu sehen."
       token("für"),
@@ -238,7 +256,7 @@ public class AgreementRule extends Rule {
       posRegex("SUB:.*")
     ),
     Arrays.asList(  // "Ein Esel schimpft den anderen Langohr."
-      posRegex("VER:2:.*"),
+      posRegex("VER:3:.*"),
       regex("den|die|das"),
       regex("anderen?"),
       posRegex("SUB:.*")
@@ -248,10 +266,43 @@ public class AgreementRule extends Rule {
       token("andere"),
       posRegex("SUB:.*PLU.*")
     ),
-    Arrays.asList(  // "was sein Klient für ein Mensch sei"
-      new PatternTokenBuilder().token("was").setSkip(2).build(),
+    Arrays.asList(  // "was sein Klient für ein Mensch sei",
+      // "Mir wird nicht ganz klar, was das bei 1:58 für ein Akkord ist."
+      new PatternTokenBuilder().token("was").setSkip(5).build(),
       token("für"),
-      token("ein")
+      token("ein"),
+      new PatternTokenBuilder().posRegex("ADJ:.*(MAS|NEU).*").min(0).build(),
+      posRegex("SUB:.*:(MAS|NEU).*")
+    ),
+    Arrays.asList(  // "was sein Klient für ein Mensch sei",
+      // "Mir wird nicht ganz klar, was das bei 1:58 für ein Akkord ist."
+      new PatternTokenBuilder().token("was").setSkip(5).build(),
+      token("für"),
+      token("eine"),
+      new PatternTokenBuilder().posRegex("ADJ:.*FEM.*").min(0).build(),
+      posRegex("SUB:.*:FEM.*")
+    ),
+    Arrays.asList(
+      // "Was in aller Welt soll das denn für ein Satz sein?"
+      token("was"),
+      token("in"),
+      token("aller"),
+      new PatternTokenBuilder().token("Welt").setSkip(4).build(),
+      token("für"),
+      token("ein"),
+      new PatternTokenBuilder().posRegex("ADJ:.*(MAS|NEU).*").min(0).build(),
+      posRegex("SUB:.*:(MAS|NEU).*")
+    ),
+    Arrays.asList(
+      // "Was in aller Welt soll das denn für ein Satz sein?"
+      token("was"),
+      token("in"),
+      token("aller"),
+      new PatternTokenBuilder().token("Welt").setSkip(4).build(),
+      token("für"),
+      token("eine"),
+      new PatternTokenBuilder().posRegex("ADJ:.*FEM.*").min(0).build(),
+      posRegex("SUB:.*:FEM.*")
     ),
     Arrays.asList(  // "wird das schwere Konsequenzen haben"
       token("das"),
@@ -277,21 +328,58 @@ public class AgreementRule extends Rule {
       token("einen"),
       pos("SUB:NOM:SIN:NEU")
     ),
-    Arrays.asList(  // "Dies erlaubt Forschern, ..."
+    Arrays.asList(  // "Dies erlaubt Forschern, ..." aber auch "Dieses versuchten Mathematiker ..."
+      pos("SENT_START"),
       posRegex("PRO:DEM:.+"),
-      posRegex("PA2:.+"),
-      posRegex("SUB:.*:PLU.*")
+      posRegex("VER:3:.+"),
+      posRegex("SUB:(DAT|NOM):PLU.*")
+    ),
+    Arrays.asList(  // "in denen Energie steckt"
+      new PatternTokenBuilder().posRegex("SENT_START|VER:AUX:[123].+").negate().build(),
+      posRegex("PRP:.+"),
+      new PatternTokenBuilder().posRegex("PRO:DEM:(DAT|AKK).+").tokenRegex("der|dies").matchInflectedForms().build(),
+      posRegex("SUB:...:PLU.*")
+    ),
+    Arrays.asList(  // "für den Mailänder Bischofssitz"
+      posRegex("PRP:.+"),
+      new PatternTokenBuilder().posRegex("PRO:DEM:(DAT|AKK).+").tokenRegex("der|dies").matchInflectedForms().build(),
+      new PatternTokenBuilder().csTokenRegex("[A-ZÄÖÜ].+er").build(),
+      new PatternTokenBuilder().posRegex("SUB.+").build()
+    ),
+    Arrays.asList(
+      posRegex("PRP:.+"),
+      posRegex("PRO:DEM:(DAT|AKK).+"),
+      posRegex("PA2:(DAT|AKK).+"),
+      posRegex("SUB:(DAT|AKK):.*")
+    ),
+    Arrays.asList( // Artikel 34 setzt dem bestimmte Formen gleich
+      posRegex("VER:.*[123].*"),
+      posRegex("PRO:DEM:DAT:SIN:NEU.*"),
+      posRegex("PA2:AKK:PLU.+"),
+      posRegex("SUB:AKK:PLU.+")
+    ),
+    Arrays.asList( // Er stellt dieses interessierten Domänen zur Verfügung
+      posRegex("VER:.*[123].*"),
+      posRegex("PRO:DEM:AKK:SIN:NEU.*"),
+      posRegex("PA2:DAT:PLU.+"),
+      posRegex("SUB:DAT:PLU.+")
+    ),
+    Arrays.asList(
+      pos("ADJ:PRD:KOM"),
+      csToken("als"),
+      regex("d(er|ie|as)"),
+      posRegex(".+:GEN:.+")
     ),
     Arrays.asList(  // "Wir bereinigen das nächsten Dienstag."
       posRegex("VER:.*|UNKNOWN"),
       token("das"),
-      tokenRegex("(über)?nächste[ns]?|kommende[ns]?|(vor)?letzten"),
-      tokenRegex("Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Montag|D(ien|onner)stag|Mittwoch|Freitag|S(ams|onn)tag|Sonnabend|Woche|Monat|Jahr|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?")
+      csRegex("(über)?nächste[ns]?|kommende[ns]?|(vor)?letzten"),
+      csRegex("Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Montag|D(ien|onner)stag|Mittwoch|Freitag|S(ams|onn)tag|Sonnabend|Woche|Monat|Jahr|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?")
     ),
     Arrays.asList(  // "Wir releasen das Montag.", "Wir präsentierten das Januar."
       posRegex("VER:.*|UNKNOWN"),
-      token("das"),
-      tokenRegex("Januar|Februar|März|April|Mai|Ju[nl]i|August|September|Oktober|November|Dezember|Montags?|D(ien|onner)stags?|Mittwochs?|Freitags?|S(ams|onn)tags?|Sonnabends?|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?")
+      csToken("das"),
+      csRegex("Januar|Februar|März|April|Mai|Ju[nl]i|August|September|Oktober|November|Dezember|Montags?|D(ien|onner)stags?|Mittwochs?|Freitags?|S(ams|onn)tags?|Sonnabends?|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?")
     ),
     Arrays.asList(  // "Kannst du das Mittags machen?"
       token("das"),
@@ -300,14 +388,20 @@ public class AgreementRule extends Rule {
     ),
     Arrays.asList(  // "Kannst du das nächsten Monat machen?"
       token("das"),
-      tokenRegex("(über)?nächste[ns]?|kommende[ns]?|(vor)?letzten"),
-      tokenRegex("Januar|Februar|März|April|Mai|Ju[nl]i|August|September|Oktober|November|Dezember|Montag|D(ien|onner)stag|Mittwoch|Freitag|S(ams|onn)tag|Sonnabend|Woche|Monat|Jahr|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?"),
+      tokenRegex("(über)?nächste[ns]?|kommende[ns]?|(vor)?letzten|vorigen"),
+      csRegex("Januar|Februar|März|April|Mai|Ju[nl]i|August|September|Oktober|November|Dezember|Montag|D(ien|onner)stag|Mittwoch|Freitag|S(ams|onn)tag|Sonnabend|Woche|Monat|Jahr|Morgens?|Abends|Übermorgen|Mittags?|Nachmittags?|Vormittags?|Spätabends?|Nachts?"),
       posRegex("VER:.*|UNKNOWN")
     ),
     Arrays.asList(
       token("das"),
-      tokenRegex("Zufall|Sinn|Spaß"),
+      csRegex("Zufall|Sinn|Spaß|Freude"),
       token("?")
+    ),
+    Arrays.asList(
+       // "War das Zufall, dass es ging?"
+      token("das"),
+      csRegex("Zufall|Sinn|Spaß"),
+      csToken(",")
     ),
     Arrays.asList(
       token("in"),
@@ -319,18 +413,18 @@ public class AgreementRule extends Rule {
     Arrays.asList( // "So hatte das Vorteile|Auswirkungen|Konsequenzen..."
       posRegex("ADV:.+"),
       tokenRegex("(?i:hat(te)?)"),
-      token("das")
+      csToken("das")
     ),
     Arrays.asList(
       tokenRegex("von|bei"),
-      tokenRegex("(vielen|allen)"),
+      csRegex("vielen|allen"),
       posRegex("PA2:.*|ADJ:AKK:PLU:.*")  // "ein von vielen bewundertes Haus" / "Das weckte bei vielen ungute Erinnerungen."
     ),
     Arrays.asList(
       // "Der letzte Woche vom Rat der Justizminister gefasste Beschluss..."
-      tokenRegex("der|die|das|den|dem"),
-      tokenRegex("letzte[ns]?|vorige[ns]?"),
-      tokenRegex("Woche|Monat|Jahr|Jahrzehnt|Jahrhundert"),
+      tokenRegex("de[mnr]|die|das"),
+      csRegex("letzte[ns]?|vorige[ns]?"),
+      csRegex("Woche|Monat|Jahr(zehnt|hundert)?"),
       posRegex("PRP:.*"),
       posRegex("SUB:.*"),
       posRegex("ART:.*"),
@@ -339,55 +433,64 @@ public class AgreementRule extends Rule {
     ),
     Arrays.asList(
       token("für"),
-      tokenRegex("(viele|alle|[dm]ich|ihn|sie|uns|andere)"),
-      posRegex("ADJ:AKK:.*")  // "Ein für viele wichtiges Anliegen."
+      csRegex("(viele|alle|[dm]ich|ihn|sie|uns|andere|jeden)"),
+      posRegex("ADJ:NOM:.*")  // "Ein für viele wichtiges Anliegen."
     ),
     Arrays.asList(
       new PatternTokenBuilder().tokenRegex("flößen|machen|jagen").matchInflectedForms().build(),
-      token("einem"),
-      token("Angst")  // "Dinge, die/ Etwas, das einem Angst macht"
+      csRegex("einem|jedem|keinem"),
+      csToken("Angst")  // "Dinge, die/ Etwas, das einem Angst macht"
     ),
     Arrays.asList(
-      token("einem"),
-      token("Angst"),  // "Was einem Angst macht"
+      tokenRegex("einem|jedem|keinem"),
+      csToken("Angst"),  // "Was einem Angst macht"
       new PatternTokenBuilder().tokenRegex("machen|ein(flößen|jagen)").matchInflectedForms().build()
     ),
     Arrays.asList(
       token("einem"),
-      token("geschenkten"),
-      token("Gaul")
+      csToken("geschenkten"),
+      csToken("Gaul")
+    ),
+    Arrays.asList( // "Wir wollen sein ein einzig Volk von Brüdern" -- Schiller
+      csToken("ein"),
+      csToken("einzig"),
+      csToken("Volk"),
+      csToken("von")
+    ),
+    Arrays.asList( // "Lieber den Spatz in der Hand"
+      csToken("den"),
+      csToken("Spatz"),
+      csToken("in")
     ),
     Arrays.asList(
       token("kein"),
-      token("schöner"),
-      token("Land")  // https://de.wikipedia.org/wiki/Kein_sch%C3%B6ner_Land
+      csToken("schöner"),
+      csToken("Land")  // https://de.wikipedia.org/wiki/Kein_sch%C3%B6ner_Land
     ),
     Arrays.asList(
       tokenRegex("die|der|das"),
-      tokenRegex("Anfang|Ende"),
-      tokenRegex("Januar|Jänner|Februar|März|April|Mai|Ju[ln]i|August|September|Oktober|November|Dezember|[12][0-9]{3}")
+      csRegex("Anfang|Mitte|Ende"),
+      csRegex("Januar|Jänner|Februar|März|April|Mai|Ju[ln]i|August|September|Oktober|November|Dezember|[12][0-9]{3}")
     ),
     Arrays.asList(
       csRegex("Ist|Sind|Macht|Wird"),
-      token("das"),
-      posRegex("SUB:.*"),
-      posRegex("PKT|KON:NEB|ZUS")// "Ist das Kunst?" / "Ist das Kunst oder Abfall?" / "Sind das Eier aus Bodenhaltung"
+      csToken("das"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM.*").min(0).build(),
+      posRegex("SUB:NOM.*"),
+      posRegex("PKT|KON:NEB|PRP.+")// "Ist das Kunst?" / "Ist das Kunst oder Abfall?" / "Sind das Eier aus Bodenhaltung"
     ),
-    Arrays.asList( // Die Präsent AG
-      tokenRegex("Präsent|Windhorst|Energiedienst|Lift"),
-      token("AG")
+    Arrays.asList( // Die Präsent AG ("Theater AG" is found via DE_COMPOUNDS)
+      csRegex("[A-ZÄÖÜ].+"),
+      csRegex("AG|GmbH")
     ),
-    Arrays.asList(
-      pos(JLanguageTool.SENTENCE_START_TAGNAME),
-      tokenRegex("Meist(ens)?|Oft(mals)?|Häufig|Selten"),
-      tokenRegex("sind|waren|ist"),
-      token("das"),
-      posRegex("SUB:.*") // Meistens sind das Frauen, die damit besser umgehen können.
+    Arrays.asList( // Die Otto Christ AG 
+      csRegex("[A-ZÄÖÜ].+"),
+      csRegex("[A-ZÄÖÜ].+"),
+      csRegex("AG|GmbH")
     ),
     Arrays.asList(
       // like above, but with ":", as we don't interpret this as a sentence start (but it often is)
-      token(":"),
-      tokenRegex("Meist(ens)?|Oft(mals)?|Häufig|Selten"),
+      csRegex("Meist(ens)?|Oft(mals)?|Häufig|Selten"),
       tokenRegex("sind|waren|ist"),
       token("das"),
       posRegex("SUB:.*") // Meistens sind das Frauen, die damit besser umgehen können.
@@ -400,6 +503,11 @@ public class AgreementRule extends Rule {
     Arrays.asList( // Es ist einige Grad kälter (see example on https://www.duden.de/rechtschreibung/Grad)
       token("einige"),
       token("Grad")
+    ),
+    Arrays.asList( // Ein dickes Danke an alle die ...
+      token("ein"),
+      posRegex("ADJ:.+"),
+      token("Danke")
     ),
     Arrays.asList(
       pos(JLanguageTool.SENTENCE_START_TAGNAME),
@@ -433,7 +541,7 @@ public class AgreementRule extends Rule {
       tokenRegex("Besitz|Mut")
     ),
     Arrays.asList(
-      tokenRegex("d(ie|e[nr])|[md]eine[nr]?|(eure|unsere)[nr]?"),
+      tokenRegex("d(ie|e[nr])|[md]eine[nr]?|(eure|unsere)[nr]?|diese[nr]?"),
       token("Top"),
       tokenRegex("\\d+")
     ),
@@ -526,9 +634,9 @@ public class AgreementRule extends Rule {
     Arrays.asList( // Texas und New Mexico, beides spanische Kolonien, sind
       csToken(","),
       csToken("beides"),
-      posRegex("ADJ:NOM:PLU.+"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM:PLU.+").min(0).build(),
       posRegex("SUB:NOM:PLU.+"),
-      csToken(",")
+      pos("PKT")
     ),
     Arrays.asList(
       tokenRegex("[dD]e[rn]"),
@@ -561,9 +669,16 @@ public class AgreementRule extends Rule {
       posRegex("SUB:NOM:.*"),
       posRegex("PKT|SENT_END|KON.*")
     ),
-    Arrays.asList( // "Sie sagte, dass das Rache bedeuten würden"
+    Arrays.asList( // "Aber ansonsten ist das erste Sahne"
+      new PatternTokenBuilder().token("sein").matchInflectedForms().build(),
+      csToken("das"),
+      csToken("erste"),
+      csToken("Sahne")
+    ),
+    Arrays.asList( // "Sie sagte, dass das Rache bedeuten würden", "Sie werden merken, dass das echte Nutzer sind."
       pos("KON:UNT"),
       csToken("das"),
+      new PatternTokenBuilder().posRegex("ADJ:.*").min(0).build(),
       posRegex("SUB:.+"),
       new PatternTokenBuilder().tokenRegex("bedeuten|sein").matchInflectedForms().build()
     ),
@@ -694,7 +809,7 @@ public class AgreementRule extends Rule {
       tokenRegex("macht|ergibt|stiftet|bringt")
     ),
     Arrays.asList(
-      tokenRegex("hat|hätte|kann|wird|dürfte|muss|sollte|soll|könnte|müsste|würde"),
+      tokenRegex("hat|hätte|kann|wird|dürfte|muss|soll(te)?|könnte|müsste|würde"),
       token("das"),
       token("Konsequenzen")
     ),
@@ -801,8 +916,35 @@ public class AgreementRule extends Rule {
       csToken("Bayern")
     ),
     Arrays.asList(
+      csToken("Super"), 
+      csToken("Mario")
+    ),
+    Arrays.asList(
+      csToken("Toyota"), // Die FC Bayern München Hymne (Vorschlag macht keinen Sinn "FC-Bayern")
+      csToken("Motor"),
+      tokenRegex("Corp(oration)?|Company")
+    ),
+    Arrays.asList(
       tokenRegex("Office|Microsoft"),
       csToken("365")
+    ),
+    Arrays.asList(
+      csToken("Prinz"),
+      tokenRegex("Charles|William")
+    ),
+    Arrays.asList(
+      token(":"),
+      csToken("D")
+    ),
+    Arrays.asList(
+      tokenRegex("ist|war(en)?|sind|wird|werden"),
+      csToken("das"),
+      csToken("reine"),
+      posRegex("SUB:NOM:.*")
+    ),
+    Arrays.asList( // Eine Android Watch
+      csToken("Android"),
+      tokenRegex("Wear|Watch(es)?|Smartwatch(es)?|OS")
     ),
     Arrays.asList( // "Bitte öffnen Sie die CAD.pdf"
       tokenRegex("\\w+"),
@@ -813,21 +955,90 @@ public class AgreementRule extends Rule {
       new PatternTokenBuilder().tokenRegex("Junior|Senior").setSkip(3).build(),
       tokenRegex("Manager[ns]?|Managerin(nen)?")
     ),
+    Arrays.asList(
+      new PatternTokenBuilder().tokenRegex("Junior|Senior").build(),
+      token("Software"),
+      tokenRegex("Engineers?|Architects?|Managers?|Directors?")
+    ),
+    Arrays.asList(
+      new PatternTokenBuilder().tokenRegex("Junior|Senior").build(),
+      token("Engineering"),
+      tokenRegex("Manager[ns]?|Directors?")
+    ),
     Arrays.asList( // "Angel" is tagged like the "Die Angel" for fishing
       csToken("Business"),
       tokenRegex("Angel[ns]?")
     ),
+    Arrays.asList( // "des Manager Magazins"
+      csToken("Manager"),
+      tokenRegex("Magazins?")
+    ),
     Arrays.asList(
       csToken("Junior"),
-      csToken("Suite[sn]?")
+      tokenRegex("Suite[sn]?")
     ),
-    Arrays.asList( // "Angel" is tagged like the "Die Angel" for fishing
-      tokenRegex("Customer|User"),
-      tokenRegex("Journeys?")
+    Arrays.asList( // Deine Abt.
+      tokenRegex("die|eine|unsere|meine|ihre|eure|diese|seine|deine"),
+      csToken("Abt"),
+      token("."),
+      tokenRegex(".+")
+    ),
+    Arrays.asList(
+      new PatternTokenBuilder().tokenRegex("Junior|Senior").build(),
+      new PatternTokenBuilder().tokenRegex("Journeys?").build()
     ),
     Arrays.asList( // Wir trinken ein kühles Blondes
       token("kühles"),
       token("Blondes")
+    ),
+    Arrays.asList(
+      tokenRegex("Vitamin|Buchstabe"),
+      tokenRegex("D|B|B[1-9]|B12")
+    ),
+    Arrays.asList( // "Bei uns im Krankenhaus betrifft das Operationssäle."
+      new PatternTokenBuilder().token("betreffen").matchInflectedForms().build(),
+      csToken("das"),
+      posRegex("SUB:AKK:PLU:.*")
+    ),
+    Arrays.asList( // "Was für ein Narr"
+      token("was"),
+      csToken("für"),
+      csToken("ein"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM:SIN:(MAS|NEU).*").min(0).build(),
+      posRegex("SUB:NOM:SIN:(MAS|NEU)")
+    ),
+    Arrays.asList( // "Was für ein liebe Frau"
+      token("was"),
+      csToken("für"),
+      csToken("eine"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM:SIN:FEM.*").min(0).build(),
+      pos("SUB:NOM:SIN:FEM")
+    ),
+    Arrays.asList( // "Was war ich für ein Narr"
+      token("was"),
+      new PatternTokenBuilder().token("sein").matchInflectedForms().setSkip(2).build(),
+      csToken("für"),
+      csToken("ein"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM:SIN:(MAS|NEU).*").min(0).build(),
+      posRegex("SUB:NOM:SIN:(MAS|NEU)")
+    ),
+    Arrays.asList( // "Was war sie nur für eine dumme Person"
+      token("was"),
+      new PatternTokenBuilder().token("sein").matchInflectedForms().setSkip(2).build(),
+      csToken("für"),
+      csToken("eine"),
+      new PatternTokenBuilder().posRegex("ADJ:NOM:SIN:FEM.*").min(0).build(),
+      pos("SUB:NOM:SIN:FEM")
+    ),
+    Arrays.asList( // "Wie viele Paar Schuhe braucht er?"
+      csRegex("vielen?|wenigen?|einigen?"),
+      csToken("Paar"),
+      posRegex("SUB:NOM:PLU:...")
+    ),
+    Arrays.asList( // Dann macht das Sinn.
+      csRegex("machte?|ergibt|ergab|stiftete?"),
+      csToken("das"),
+      csToken("Sinn")
     )
   );
 
@@ -865,6 +1076,7 @@ public class AgreementRule extends Rule {
   private static final Set<String> PRONOUNS_TO_BE_IGNORED = new HashSet<>(Arrays.asList(
     "ich",
     "dir",
+    "dich",
     "du",
     "er", "sie", "es",
     "wir",
@@ -906,7 +1118,7 @@ public class AgreementRule extends Rule {
     "Piepen", // Die Piepen
     "Badlands",
     "Visual", // englisch
-    "Chief", // Chief Excutive Officer
+    "Chief", // Chief Executive Officer
     "Carina", // Name
     "Wüstenrot", // Name
     "Meter", // Das Meter (Objekt zum Messen)
@@ -926,6 +1138,7 @@ public class AgreementRule extends Rule {
     super.setCategory(Categories.GRAMMAR.getCategory(messages));
     addExamplePair(Example.wrong("<marker>Der Haus</marker> wurde letztes Jahr gebaut."),
                    Example.fixed("<marker>Das Haus</marker> wurde letztes Jahr gebaut."));
+    antiPatterns = cacheAntiPatterns(language, ANTI_PATTERNS);
   }
 
   @Override
@@ -943,21 +1156,25 @@ public class AgreementRule extends Rule {
     return "Kongruenz von Nominalphrasen (unvollständig!), z.B. 'mein kleiner(kleines) Haus'";
   }
 
-  private void replacePrepositionsByArticle (AnalyzedTokenReadings[] tokens) {
+  private Map<Integer,ReplacementType> replacePrepositionsByArticle (AnalyzedTokenReadings[] tokens) {
+    Map<Integer, ReplacementType> map = new HashMap<>();
     for (int i = 0; i < tokens.length; i++) {
       if (StringUtils.equalsAny(tokens[i].getToken(), "ins", "ans", "aufs", "vors", "durchs", "hinters", "unters", "übers", "fürs", "ums")) {
         tokens[i] = new AnalyzedTokenReadings(INS_REPLACEMENT, tokens[i].getStartPos());
+        map.put(i, ReplacementType.Ins);
       } else if (StringUtils.equalsAny(tokens[i].getToken(), "zur")) {
         tokens[i] = new AnalyzedTokenReadings(ZUR_REPLACEMENT, tokens[i].getStartPos());
+        map.put(i, ReplacementType.Zur);
       }
     }
+    return map;
   }
 
   @Override
   public RuleMatch[] match(AnalyzedSentence sentence) {
     List<RuleMatch> ruleMatches = new ArrayList<>();
     AnalyzedTokenReadings[] tokens = getSentenceWithImmunization(sentence).getTokensWithoutWhitespace();
-    replacePrepositionsByArticle(tokens);
+    Map<Integer, ReplacementType> replMap = replacePrepositionsByArticle(tokens);
     for (int i = 0; i < tokens.length; i++) {
       //defaulting to the first reading
       //TODO: check for all readings
@@ -1021,7 +1238,7 @@ public class AgreementRule extends Rule {
             }
           }
         } else if (GermanHelper.hasReadingOfType(nextToken, POSType.NOMEN) && !"Herr".equals(nextToken.getToken())) {
-          RuleMatch ruleMatch = checkDetNounAgreement(tokens[i], nextToken, sentence, i);
+          RuleMatch ruleMatch = checkDetNounAgreement(tokens[i], nextToken, sentence, i, replMap);
           if (ruleMatch != null) {
             ruleMatches.add(ruleMatch);
           }
@@ -1056,7 +1273,7 @@ public class AgreementRule extends Rule {
 
   @Override
   public List<DisambiguationPatternRule> getAntiPatterns() {
-    return makeAntiPatterns(ANTI_PATTERNS, language);
+    return antiPatterns.get();
   }
 
   private boolean isNonPredicativeAdjective(AnalyzedTokenReadings tokensReadings) {
@@ -1112,14 +1329,14 @@ public class AgreementRule extends Rule {
 
   @Nullable
   private RuleMatch checkDetNounAgreement(AnalyzedTokenReadings token1,
-      AnalyzedTokenReadings token2, AnalyzedSentence sentence, int tokenPos) {
+                                          AnalyzedTokenReadings token2, AnalyzedSentence sentence, int tokenPos, Map<Integer, ReplacementType> replMap) {
     // TODO: remove "-".equals(token2.getToken()) after the bug fix
     // see Daniel's comment from 20.12.2016 at https://github.com/languagetool-org/languagetool/issues/635
     if (token2.isImmunized() || NOUNS_TO_BE_IGNORED.contains(token2.getToken()) || "-".equals(token2.getToken())) {
       return null;
     }
 
-    Set<String> set1 = null;
+    Set<String> set1;
     if (token1.getReadings().size() == 1 &&
         token1.getReadings().get(0).getPOSTag() != null &&
         token1.getReadings().get(0).getPOSTag().endsWith(":STV")) {
@@ -1141,7 +1358,7 @@ public class AgreementRule extends Rule {
             "Kasus, Genus oder Numerus" : String.join(" und ", errorCategories);
       String msg = "Möglicherweise fehlende grammatische Übereinstimmung " +
             "des " + errorDetails + ".";
-      String shortMsg = "Möglicherweise keine Übereinstimmung des " + errorDetails;
+      String shortMsg = "Evtl. keine Übereinstimmung von Kasus, Genus oder Numerus";
       ruleMatch = new RuleMatch(this, sentence, token1.getStartPos(),
               token2.getEndPos(), msg, shortMsg);
       /*try {
@@ -1150,7 +1367,7 @@ public class AgreementRule extends Rule {
       } catch (MalformedURLException e) {
         throw new RuntimeException(e);
       }*/
-      AgreementSuggestor suggestor = new AgreementSuggestor(language.getSynthesizer(), token1, token2);
+      AgreementSuggestor suggestor = new AgreementSuggestor(language.getSynthesizer(), token1, token2, replMap.get(tokenPos));
       List<String> suggestions = suggestor.getSuggestions();
       ruleMatch.setSuggestedReplacements(suggestions);
     }
@@ -1162,7 +1379,7 @@ public class AgreementRule extends Rule {
   private RuleMatch getCompoundError(AnalyzedTokenReadings token1, AnalyzedTokenReadings token2, int tokenPos, AnalyzedSentence sentence) {
     if (tokenPos != -1 && tokenPos + 2 < sentence.getTokensWithoutWhitespace().length) {
       AnalyzedTokenReadings nextToken = sentence.getTokensWithoutWhitespace()[tokenPos + 2];
-      if (StringTools.startsWithUppercase(nextToken.getToken())) {
+      if (startsWithUppercase(nextToken.getToken())) {
         String potentialCompound = token2.getToken() + StringTools.lowercaseFirstChar(nextToken.getToken());
         String origToken1 = sentence.getTokensWithoutWhitespace()[tokenPos].getToken();  // before 'ins' etc. replacement
         String testPhrase = origToken1 + " " + potentialCompound;
@@ -1180,7 +1397,7 @@ public class AgreementRule extends Rule {
                                      int tokenPos, AnalyzedSentence sentence) {
     if (tokenPos != -1 && tokenPos + 3 < sentence.getTokensWithoutWhitespace().length) {
       AnalyzedTokenReadings nextToken = sentence.getTokensWithoutWhitespace()[tokenPos + 3];
-      if (StringTools.startsWithUppercase(nextToken.getToken())) {
+      if (startsWithUppercase(nextToken.getToken())) {
         String potentialCompound = token3.getToken() + StringTools.lowercaseFirstChar(nextToken.getToken());
         String origToken1 = sentence.getTokensWithoutWhitespace()[tokenPos].getToken();  // before 'ins' etc. replacement
         String testPhrase = origToken1 + " " + token2.getToken() + " " + potentialCompound;
@@ -1192,11 +1409,29 @@ public class AgreementRule extends Rule {
     return null;
   }
 
+  // z.B. "die ganz neue Original Mail" -> "die ganz neue Originalmail"
+  @Nullable
+  private RuleMatch getCompoundError(AnalyzedTokenReadings token1, AnalyzedTokenReadings token2, AnalyzedTokenReadings token3,
+                                     AnalyzedTokenReadings token4, int tokenPos, AnalyzedSentence sentence) {
+    if (tokenPos != -1 && tokenPos + 4 < sentence.getTokensWithoutWhitespace().length) {
+      AnalyzedTokenReadings nextToken = sentence.getTokensWithoutWhitespace()[tokenPos + 4];
+      String potentialCompound = token4.getToken() + StringTools.lowercaseFirstChar(nextToken.getToken());
+      if (startsWithUppercase(token4.getToken()) && startsWithUppercase(nextToken.getToken())) {
+        String origToken1 = sentence.getTokensWithoutWhitespace()[tokenPos].getToken();  // before 'ins' etc. replacement
+        String testPhrase = origToken1 + " " + token2.getToken() + " " + token3.getToken() + " " + potentialCompound;
+        String hyphenPotentialCompound = token4.getToken() + "-" + nextToken.getToken();
+        String hyphenTestPhrase = origToken1 + " " + token2.getToken() + " " + token3.getToken() + " " + hyphenPotentialCompound;
+        return getRuleMatch(token1, sentence, nextToken, testPhrase, hyphenTestPhrase);
+      }
+    }
+    return null;
+  }
+
   @Nullable
   private RuleMatch getRuleMatch(AnalyzedTokenReadings token1, AnalyzedSentence sentence, AnalyzedTokenReadings nextToken, String testPhrase, String hyphenTestPhrase) {
     try {
       initLt();
-      if (nextToken.getReadings().stream().allMatch(k -> k.getPOSTag() != null && !k.getPOSTag().startsWith("SUB:"))) {
+      if (nextToken.getReadings().stream().allMatch(k -> k.getPOSTag() != null && !k.getPOSTag().startsWith("SUB"))) {
         return null;
       }
       List<String> replacements = new ArrayList<>();
@@ -1262,6 +1497,15 @@ public class AgreementRule extends Rule {
           return null;
         }
       }
+      if (tokenPos + 4 < sentence.getTokensWithoutWhitespace().length) {
+        RuleMatch compoundMatch = getCompoundError(sentence.getTokensWithoutWhitespace()[tokenPos],
+                sentence.getTokensWithoutWhitespace()[tokenPos+1],
+                sentence.getTokensWithoutWhitespace()[tokenPos+2],
+                sentence.getTokensWithoutWhitespace()[tokenPos+3], tokenPos, sentence);
+        if (compoundMatch != null) {
+          return compoundMatch;
+        }
+      }
       RuleMatch compoundMatch = getCompoundError(token1, token2, token3, tokenPos, sentence);
       if (compoundMatch != null) {
         return compoundMatch;
@@ -1272,7 +1516,7 @@ public class AgreementRule extends Rule {
       String msg = "Möglicherweise fehlende grammatische Übereinstimmung " +
             "von Kasus, Numerus oder Genus. Beispiel: 'mein kleiner Haus' " +
             "statt 'mein kleines Haus'";
-      String shortMsg = "Möglicherweise keine Übereinstimmung von Kasus, Numerus oder Genus";
+      String shortMsg = "Evtl. keine Übereinstimmung von Kasus, Numerus oder Genus";
       ruleMatch = new RuleMatch(this, sentence, token1.getStartPos(), token3.getEndPos(), msg, shortMsg);
     }
     return ruleMatch;

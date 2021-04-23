@@ -29,11 +29,14 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 /**
  * @since 3.4
  */
 final class ServerTools {
+
+  private final static Pattern sentContentPattern = Pattern.compile("<sentcontent>.*</sentcontent>", Pattern.DOTALL);
 
   private ServerTools() {
   }
@@ -134,15 +137,14 @@ final class ServerTools {
       return UserLimits.getLimitsFromToken(config, params.get("token"));
     } else if (params.get("username") != null) {
       if (params.get("apiKey") != null && params.get("password") != null) {
-        // TODO: throw exception (but first log to see how often this happens)
-        print("WARN: apiKey AND password was set: " + params.get("apiKey"), System.err);
+        throw new IllegalArgumentException("apiKey AND password was set, set only apiKey");
       }
       if (params.get("apiKey") != null) {
         return UserLimits.getLimitsByApiKey(config, params.get("username"), params.get("apiKey"));
       } else if (params.get("password") != null) {
         return UserLimits.getLimitsFromUserAccount(config, params.get("username"), params.get("password"));
       } else {
-        throw new IllegalArgumentException("With 'username' set, you also need to specify either 'apiKey' (recommended) or 'password'");
+        throw new IllegalArgumentException("With 'username' set, you also need to specify 'apiKey'");
       }
     } else {
       if (params.get("apiKey") != null) {
@@ -176,6 +178,16 @@ final class ServerTools {
   }
 
   @NotNull
+  static String getModeForLog(JLanguageTool.Mode mode) {
+    switch (mode) {
+      case TEXTLEVEL_ONLY: return "tlo";
+      case ALL_BUT_TEXTLEVEL_ONLY: return "!tlo";
+      case ALL: return "all";
+      default: return "?";
+    }
+  }
+
+  @NotNull
   static JLanguageTool.Level getLevel(Map<String, String> params) {
     JLanguageTool.Level level;
     if (params.get("level") != null) {
@@ -199,7 +211,7 @@ final class ServerTools {
    */
   public static String cleanUserTextFromMessage(String s, Map<String, String> params) {
     if (params.getOrDefault("inputLogging", "").equals("no")) {
-      return s.replaceAll("<sentcontent>.*?</sentcontent>", "<< content removed >>");
+      return sentContentPattern.matcher(s).replaceAll("<< content removed >>");
     }
     return s;
   }

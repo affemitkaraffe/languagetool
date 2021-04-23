@@ -2206,8 +2206,6 @@ Pai-Nosso*
 Pai-Nossos*
 palavra-chave*
 Palavra-chave*
-palavras-chave*
-Palavras-chave*
 palavras-cruzadas*
 Palavras-cruzadas*
 pan-africana*
@@ -3268,6 +3266,8 @@ redator-secretário*
 Redator-secretário*
 redatora-chefe*
 Redatora-chefe*
+relações-públicas*
+Relações-públicas*
 renda-antiga*
 Renda-antiga*
 rendas-antiga*

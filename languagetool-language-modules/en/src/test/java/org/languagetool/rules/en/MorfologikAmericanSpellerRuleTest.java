@@ -19,6 +19,7 @@
 package org.languagetool.rules.en;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.languagetool.*;
 import org.languagetool.language.CanadianEnglish;
@@ -101,7 +102,31 @@ public class MorfologikAmericanSpellerRuleTest extends AbstractEnglishSpellerRul
     assertEquals(0, rule.match(lt.getAnalyzedSentence("I like my emoji 😾")).length);
     assertEquals(0, rule.match(lt.getAnalyzedSentence("μ")).length);
     assertEquals(0, rule.match(lt.getAnalyzedSentence("I like my emoji ❤️")).length);
-
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("This is English text 🗺.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("Yes ma'am.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("Yes ma’am.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("'twas but a dream of thee")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("fo'c'sle")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("O'Connell, O’Connell, O'Connor, O’Neill")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("viva voce, a fortiori, in vitro")).length);
+    // non-ASCII characters
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("5¼\" floppy disk drive")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("a visual magnitude of -2½")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("Water freezes at 0º C. 175ºC")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("33°5′40″N and 32°59′0″E.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("It's up to 5·10-³ meters.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("141°00′7.128″W")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("1031－1095")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("It is thus written 1″.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("a 30½-inch scale length.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("symbolically stated as A ∈ ℝ3.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("Thus ℵ0 is a regular cardinal.")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("the classical space B(ℓ2)")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("🏽")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("🧡🚴🏽♂️ , 🎉💛✈️")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("компьютерная")).length);
+    assertEquals(0, rule.match(lt.getAnalyzedSentence("中文維基百科 中文维基百科")).length);
+    
     // test words in language-specific spelling_en-US.txt
     assertEquals(0, rule.match(lt.getAnalyzedSentence("USTestWordToBeIgnored")).length);
     assertEquals(1, rule.match(lt.getAnalyzedSentence("NZTestWordToBeIgnored")).length);
@@ -211,12 +236,6 @@ public class MorfologikAmericanSpellerRuleTest extends AbstractEnglishSpellerRul
     assertThat(matches6[1].getToPos(), is(24));
     //assertThat(matches6[2].getSuggestedReplacements().get(0), is("spell"));
     
-    RuleMatch[] matches7 = rule.match(lt.getAnalyzedSentence("She awaked"));
-    assertThat(matches7.length, is(1));
-    // Avoid suggestion "Shea waked"
-    assertThat(matches7[0].getSuggestedReplacements().get(0), is("awoke"));
-    assertThat(matches7[0].getSuggestedReplacements().get(1), is("awake"));
-    
     RuleMatch[] matches8 = rule.match(lt.getAnalyzedSentence("I'm g oing"));
     assertThat(matches8.length, is(1));
     assertThat(matches8[0].getSuggestedReplacements().get(0), is("going"));
@@ -243,7 +262,7 @@ public class MorfologikAmericanSpellerRuleTest extends AbstractEnglishSpellerRul
     assertSuggestion("He teached us.", "taught");
     assertSuggestion("He buyed the wrong brand", "bought");
     assertSuggestion("I thinked so.", "thought");
-    assertSuggestion("She awaked", "awoke"); 
+    //assertSuggestion("She awaked", "awoke");   // to be added to spelling.txt
     assertSuggestion("She becomed", "became");
     assertSuggestion("It begined", "began");
     assertSuggestion("It bited", "bit");
@@ -303,6 +322,43 @@ public class MorfologikAmericanSpellerRuleTest extends AbstractEnglishSpellerRul
     assertFalse(rule.isMisspelled("tables"));
   }
   
+  @Test
+  // case: signature is (mostly) English, user starts typing in German -> first, EN is detected for whole text
+  // Also see GermanSpellerRuleTest
+  public void testMultilingualSignatureCase() throws IOException {
+    String sig = "-- " +
+                 "Department of Electrical and Electronic Engineering\n" +
+                 "Office XY, Sackville Street Building, The University of Manchester, Manchester\n";
+    assertZZ("Hallo Herr Müller, wie geht\n\n" + sig);  // "Herr" and "Müller" are accepted by EN speller
+    assertZZ("Hallo Frau Müller, wie\n\n" + sig);  // "Frau" and "Müller" are accepted by EN speller
+    assertZZ("Hallo Frau Sauer, wie\n\n" + sig);
+    //assertZZ("Hallo Frau Müller,\n\n" + sig);  // only "Hallo" not accepted by EN speller
+  }
+
+  private void assertZZ(String input) throws IOException {
+    List<AnalyzedSentence> analyzedSentences = lt.analyzeText(input);
+    assertThat(analyzedSentences.size(), is(2));
+    assertThat(rule.match(analyzedSentences.get(0))[0].getErrorLimitLang(), is("zz"));
+    assertNull(rule.match(analyzedSentences.get(1))[0].getErrorLimitLang());
+  }
+
+  @Test
+  @Ignore
+  public void testInteractiveMultilingualSignatureCase() throws IOException {
+    String sig = "-- " +
+            "Department of Electrical and Electronic Engineering\n" +
+            "Office XY, Sackville Street Building, The University of Manchester, Manchester\n";
+    List<AnalyzedSentence> analyzedSentences = lt.analyzeText("Hallo Herr Müller, wie geht\n\n" + sig);
+    for (AnalyzedSentence analyzedSentence : analyzedSentences) {
+      RuleMatch[] matches = rule.match(analyzedSentence);
+      System.out.println("===================");
+      System.out.println("S:" + analyzedSentence.getText());
+      for (RuleMatch match : matches) {
+        System.out.println("  getErrorLimitLang: " + match.getErrorLimitLang());
+      }
+    }
+  }
+
   private void assertSuggestion(String input, String... expectedSuggestions) throws IOException {
     assertSuggestion(input, rule, lt, expectedSuggestions);
   }

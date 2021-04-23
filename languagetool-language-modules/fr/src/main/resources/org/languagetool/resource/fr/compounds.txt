@@ -31,7 +31,7 @@ aller-retours*
 allume-cigare*
 allume-cigares*
 allume-gaz*
-amour-propre
+amour-propre*
 amuse-gueule*
 amuse-gueules*
 année-lumière*
@@ -182,6 +182,8 @@ brise-lames*
 brise-vent*
 brise-vents*
 cache-cache*
+cache-culbuteur*
+cache-culbuteurs*
 call-girl*
 call-girls*
 casse-cou*
@@ -260,6 +262,8 @@ contre-vérité
 contre-vérités
 contre-écrou*
 contre-écrous*
+coupe-bise*
+coupes-bise*
 coupe-faim*
 coupe-faims*
 coupe-feu*
@@ -297,6 +301,8 @@ disc-jockey*
 disc-jockeys*
 disque-jockey*
 disque-jockeys*
+double-corps*
+double-face*
 eau-de-vie*
 eaux-de-vie*
 elle-même*
@@ -366,6 +372,7 @@ haut-fond*
 haut-le-corps*
 haut-parleur*
 haut-parleurs*
+haute-définition*
 hauts-fonds*
 hold-up
 homme-grenouille*
@@ -506,6 +513,8 @@ porte-clé
 porte-cléf*
 porte-cléfs*
 porte-clés
+porte-couteau*
+porte-couteaux*
 porte-drapeau*
 porte-drapeaux*
 porte-jarretelle*
@@ -860,3 +869,11 @@ top-modèle*
 top-modèles*
 fund-raising*
 e-learning*
+Ryan-Air?
+Saint-Étienne*
+co-fondateur*
+co-fondateurs*
+visio-conférence+
+visio-conférences+
+visio-conference+
+visio-conferences+

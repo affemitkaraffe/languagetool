@@ -1,3 +1,28 @@
+tambien=también|cambien
+shampoo=champú
+aver=a ver|haber|ver|aves|saber
+alante=adelante
+ostentóreo=estentóreo|ostentoso
+ostentóreos=estentóreos|ostentosos
+ostentórea=estentórea|ostentosa
+ostentóreas=estentóreas|ostentosas
+osea=o sea|ósea|posea|óseas
+doberman|dóbermans|dóbermen|dobermen=dóberman
+mecenaje=mecenazgo
+micromecenaje=micromecenazgo
+atraves=a través
+fosfina=fosfano
+ESTAN=ESTÁN
+pej=p. ej.|pez
+poliomelitis=poliomielitis
+hos=os|los|dos|hoy|nos
+degolla=degüella
+degollas=degüellas
+degollan=degüellan
+degollo=degüello|degolló
+degolle=degüelle
+degolles=degüelles
+degollen=degüellen
 sanitización|desinfectación=desinfección
 sanitizaciones|desinfectaciones=desinfecciones
 estructuralización|estructurización=estructuración
@@ -64,3 +89,9 @@ areas=áreas
 zoom=zum|Zoom
 zairense=zaireño|zaireña
 zairenses=zaireños|zaireñas
+boicó|boycott=boicot|boicoteo
+boicós|boycotts=boicots|boicoteos
+#################################################
+# Errors in the dictionary 
+# (can be removed after updating the dictionary)
+#################################################

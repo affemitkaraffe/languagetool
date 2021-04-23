@@ -26,6 +26,7 @@ import org.languagetool.AnalyzedTokenReadings;
 import org.languagetool.rules.Rule;
 import org.languagetool.rules.RuleMatch;
 import org.languagetool.rules.Categories;
+import org.languagetool.rules.Example;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,10 +41,12 @@ public class RussianVerbConjugationRule extends Rule {
     private static final Pattern PRONOUN = Pattern.compile("PNN:(.*):Nom:(.*)");
     private static final Pattern FUT_REAL_VERB = Pattern.compile("VB:(Fut|Real):(.*):(.*):(.*):(.*)");
     private static final Pattern PAST_VERB = Pattern.compile("VB:Past:(.*):(.*):(.*)");
-
+    
     public RussianVerbConjugationRule(ResourceBundle messages) {
         super(messages);
         super.setCategory(Categories.GRAMMAR.getCategory(messages));
+        addExamplePair(Example.wrong("<marker>Я идёт</marker>."),
+        Example.fixed("<marker>Я иду</marker>."));
     }
 
     @Override
@@ -82,9 +85,9 @@ public class RussianVerbConjugationRule extends Rule {
                     } else  {
                             next2Token = "";
                             }
-                    
+                    String nextToken = nextLemmaTok.getToken();
                     String nextPosTag = nextLemmaTok.getPOSTag();
-                    if(nextPosTag != null && !(nextPosTag.isEmpty()) && !(next2Token.equals("быть")) ) {  //  "может быть"
+                    if(nextPosTag != null && !(nextPosTag.isEmpty()) && !(next2Token.equals("быть")) && !(nextToken.equals("целую")) ) {  //  "может быть"
                         Matcher verbMatcher = FUT_REAL_VERB.matcher(nextPosTag);
                         if (verbMatcher.find()) {
                             Pair<String, String> verbPair = new ImmutablePair<>(verbMatcher.group(4), verbMatcher.group(5));

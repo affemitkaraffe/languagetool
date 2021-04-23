@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
 Russian Disambiguation Rules for LanguageTool (www.languagetool.org)
-Copyright (C) 2009-2020 Yakov Reztsov
+Copyright (C) 2009-2021 Yakov Reztsov
 -->
 <rules lang="ru"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="../../../../../../../../../languagetool-core/src/main/resources/org/languagetool/resource/disambiguation.xsd">
@@ -611,9 +611,24 @@ Copyright (C) 2009-2020 Yakov Reztsov
                 <token regexp="yes">([А-ЯЁа-яё]+)-то</token>
             </pattern>
             <filter class="org.languagetool.rules.ru.NoDisambiguationRussianPartialPosTagFilter"
-                    args="no:1 regexp:([А-ЯЁа-яё]+)-то postag_regexp:(NN|ADJ|VB|PT_Short):.*"/><!-- The filter is case-sensitive -->
+                    args="no:1 regexp:([А-ЯЁа-яё]+)-то postag_regexp:(NN|ADJ|VB|PT_Short):.*|ADV"/><!-- The filter is case-sensitive -->
             <disambig action="ignore_spelling"></disambig>
         </rule>
 
-    </rulegroup> 
+    </rulegroup>
+    
+    <rule name="VERB_NOUN1" id="VERB_NOUN">
+        <pattern>		   
+            <!-- По какому случаю Вы так нарядились?   "случаю" только NN:Inanim:Masc:Sin:D, а не VB:Real:TRANS:IMPFV:Sin:P1 -->
+            <token regexp="yes" >какой|какому|такой|такому|сякой|сякому</token>
+            <marker>
+                <and>
+                    <token postag="NN:.*:.*:.*:.*" postag_regexp="yes"></token>
+                    <token postag="VB:.*:.*:.*:.*" postag_regexp="yes"></token>
+                </and>
+            </marker>
+        </pattern>
+        <disambig action="remove" postag="VB:.*:.*:.*:.*"></disambig>
+    </rule>
+       
 </rules>

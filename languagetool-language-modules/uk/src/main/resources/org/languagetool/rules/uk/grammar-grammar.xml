@@ -666,7 +666,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
         <pattern>
           <token postag_regexp="yes" postag=".*num.*" regexp="yes">два|дві|обидва|обидві|три|чотири|[^,]*(?&lt;!1)[234]
             <exception postag_regexp="yes" postag="date|time"/>
-            <exception scope="previous" regexp="yes">[:/.№]|статт[яі]|пункті?|частин[аи]|[а-яіїєґ]+\.|\.</exception> <!-- ст.,ч.,п. тощо -->
+            <exception scope="previous" regexp="yes">[:/.№]|статт[яі]|пункт[іу]?|частин[аи]|[а-яіїєґ]+\.|\.</exception> <!-- ст.,ч.,п. тощо -->
           </token>
           <token postag_regexp="yes" postag="adj.*" min="0">
             <exception regexp="yes">треті|четверті|десяті|соті|тисячні</exception>
@@ -712,6 +712,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
         <example>3 липня 1998р.</example>
         <example>ст. 33 документа</example>
         <example>статті 43 Закону</example>
+        <example>до пункту 4 параграфа 32</example>
         <example>заспівали дві пісні короля футболу</example>
         <example>випередивши на дві соті Давида Ньясу з Катару</example>
         <example>двадцять два слобожанина</example>
@@ -1553,7 +1554,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
               </token>
               <token postag_regexp="yes" postag="adj.*?:comp[bc].*">
                 <exception postag_regexp="yes" postag="verb.*"></exception>
-                <exception>дуже</exception>
+                <exception regexp="yes">дуже|рада</exception>
               </token>
             </marker>
           </unify>
@@ -1565,6 +1566,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
         <example>Сама прийшла — сама пішла</example>
         <example>Саме такий — зелений.</example>
         <example>Саме вони — партизани, були початком.</example>
+        <example>голова ради обирається на п'ять років, а сама рада — на чотири</example>
       </rule>
 
       <!-- самий перший -->
@@ -1893,15 +1895,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
       <rule>
         <pattern>
           <marker>
-            <token>кращий</token>
+            <token regexp="yes">кращ(ий|і)</token>
           </marker>
-          <token postag_regexp="yes" postag="adj:m:v_naz.*" min="0"/>
-          <token regexp="yes">друг|бомбардир|спортсмен|бестселер|представник|винахід</token>
+          <token postag_regexp="yes" postag="adj:[mp]:v_naz.*" min="0"/>
+          <token regexp="yes" inflected="yes" postag_regexp="yes" postag="noun.*:[mp]:v_naz.*">друг|бомбардир|спортсмен|бестселер|представник|винахід|учень</token>
         </pattern>
         <message>Коли мається на увазі найвищий ступінь порівняння, слід вживати <suggestion>найкращий</suggestion>?</message>
         <example correction="найкращий">наш <marker>кращий</marker> друг людини - собака</example>
         <example correction="найкращий">натомість <marker>кращий</marker> бомбардир чемпіонату</example>
         <example correction="найкращий">і <marker>кращий</marker> український бомбардир</example>
+        <example correction="найкращий">і <marker>кращі</marker> учні</example>
         <!-- TODO: exception that maybe not worth complicating the rules
         <example> щедріший, гостинніший і взагалі кращий друг</example>
         -->
@@ -2112,16 +2115,36 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
       <rule>
         <pattern>
           <token>воно</token>
+          <token min="0">не</token>
           <token postag_regexp="yes" postag="verb:.*:impers.*">
             <exception negate_pos="yes" postag_regexp="yes" postag="verb:.*:impers.*|SENT_END|PARA_END"/>
           </token>
         </pattern>
-        <message>Неправильна конструкція</message>
-        <suggestion>його <match no="2"/></suggestion>
-        <suggestion><match no="1"/> <match no="2" regexp_match="(.*)о" regexp_replace="$1е"/></suggestion>
+        <message>Неправильна конструкція (наз. відм + безос. форма дієслова)</message>
+        <suggestion>його <match no="2"/> <match no="3"/></suggestion>
+        <suggestion><match no="1"/> <match no="2"/> <match no="3" regexp_match="(.*)о" regexp_replace="$1е"/></suggestion>
         <example correction="його зафіксовано|воно зафіксоване">І так <marker>воно зафіксовано</marker> в законі.</example>
+        <example correction="його не пов'язано|воно не пов'язане">І так <marker>воно не пов'язано</marker> з подією.</example>
         <example>воно приховано існувало багато років</example>
       </rule>
+
+      <rule>
+        <pattern>
+          <token>воно</token>
+          <token min="0" postag_regexp="yes" postag="adv(?!p).*">
+            <exception negate_pos="yes" postag_regexp="yes" postag="adv(?!p).*"/>
+          </token>
+          <token postag_regexp="yes" postag="verb:.*:impers.*">
+            <exception negate_pos="yes" postag_regexp="yes" postag="verb:.*:impers.*|SENT_END|PARA_END"/>
+          </token>
+        </pattern>
+        <message>Неправильна конструкція (наз. відм + безос. форма дієслова)</message>
+        <suggestion>його <match no="2"/> <match no="3"/></suggestion>
+        <suggestion><match no="1"/> <match no="2"/> <match no="3" regexp_match="(.*)о" regexp_replace="$1е"/></suggestion>
+        <example correction="його тимчасово відкладено|воно тимчасово відкладене">І <marker>воно тимчасово відкладено</marker>.</example>
+        <example>воно приховано існувало багато років</example>
+      </rule>
+
       <rule>
         <antipattern>
           <token>все</token>
@@ -2129,14 +2152,37 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
         </antipattern>
         <pattern>
           <token>решта</token>
+          <token min="0">не</token>
           <token postag_regexp="yes" postag="verb:.*:impers.*">
             <exception negate_pos="yes" postag_regexp="yes" postag="verb:.*:impers.*|SENT_END|PARA_END"/>
           </token>
         </pattern>
-        <message>Неправильна конструкція</message>
-        <suggestion>решту <match no="2"/></suggestion>
-        <suggestion><match no="1"/> <match no="2" regexp_match="(.*)о" regexp_replace="$1а"/></suggestion>
+        <message>Неправильна конструкція (наз. відм. + безос. форма дієслова)</message>
+        <suggestion>решту <match no="2"/> <match no="3"/></suggestion>
+        <suggestion><match no="1"/> <match no="2"/> <match no="3" regexp_match="(.*)о" regexp_replace="$1а"/></suggestion>
         <example correction="решту зафіксовано|решта зафіксована">А <marker>решта зафіксовано</marker> в законі.</example>
+        <example>все решта зафіксовано</example>
+      </rule>
+
+      <rule>
+        <antipattern>
+          <token>все</token>
+          <token>решта</token>
+        </antipattern>
+        <pattern>
+          <token>решта</token>
+          <token min="0" postag_regexp="yes" postag="adv(?!p).*">
+            <exception negate_pos="yes" postag_regexp="yes" postag="adv(?!p).*"/>
+          </token>
+          <token postag_regexp="yes" postag="verb:.*:impers.*">
+            <exception negate_pos="yes" postag_regexp="yes" postag="verb:.*:impers.*|SENT_END|PARA_END"/>
+          </token>
+        </pattern>
+        <message>Неправильна конструкція (наз. відм + безос. форма дієслова)</message>
+        <suggestion>решту <match no="2"/> <match no="3"/></suggestion>
+        <suggestion><match no="1"/> <match no="2"/> <match no="3" regexp_match="(.*)о" regexp_replace="$1а"/></suggestion>
+        <example correction="решту зафіксовано|решта зафіксована">А <marker>решта зафіксовано</marker> в законі.</example>
+        <example correction="решту швиденько зафіксовано|решта швиденько зафіксована">А <marker>решта швиденько зафіксовано</marker> в законі.</example>
         <example>все решта зафіксовано</example>
       </rule>
     </rulegroup>
@@ -2319,20 +2365,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
        -->
     </rule>
 
-    <rule id="V_SHOCI" name="В шоці">
-      <pattern>
-        <token regexp="yes">[ув]</token>
-        <token postag_regexp="yes" postag="adj:m:v_mis.*" min="0"/>
-        <token>шоці</token>
-      </pattern>
-      <message>Неправильна форма «шоці»</message>
-      <suggestion>шокований</suggestion>
-      <suggestion>(кого) взяв/охопив шок</suggestion>
-      <suggestion><match no="1"/> <match no="2"/> шоку</suggestion>
-      <example correction="шокований|(кого) взяв/охопив шок|в легкому шоку">я <marker>в легкому шоці</marker></example>
-      <example correction="шокований|(кого) взяв/охопив шок|в шоку">я <marker>в шоці</marker></example>
-    </rule>
-
     <rule id="na_chyyus_dumku" name="На чиюсь думку">
       <pattern>
         <token postag="SENT_START"/>
@@ -2373,6 +2405,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
       <example correction="від">і залежно <marker>він</marker> результату</example>
     </rule>
 
+    <rule id="zaznaty_porazku" name="Зазнати/завдати поразку">
+      <pattern>
+        <token regexp="yes" inflected="yes">зазнати|зазнавати|завдати|завдавати</token>
+        <token min="0" postag_regexp="yes" postag="noun.*?v_dav.*">
+          <exception postag_regexp="yes" postag="adj:f:v_zna.*"/>
+        </token>
+        <marker>
+          <token min="0" postag_regexp="yes" postag="adj:f:v_zna.*"/>
+          <token>поразку</token>
+        </marker>
+      </pattern>
+      <message>Правильно: <suggestion><match no="3" postag_regexp="yes" postag="adj:f:v_zna(.*)" postag_replace="adj:f:v_rod$1"/> поразки</suggestion></message>
+      <example correction="поразки">зазнати <marker>поразку</marker>.</example>
+      <example correction="нищівної поразки">завдав <marker>нищівну поразку</marker>.</example>
+      <example correction="нищівної поразки">завдав йому <marker>нищівну поразку</marker>.</example>
+    </rule>
+
 <!--
     TODO: досить складна логіка
     <rulegroup id="NE_Z_PRUKMETNYKAMY" name="Не з прикметниками">
@@ -2388,6 +2437,105 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
       </rule>
     </rulegroup>
 -->
+
+    <rule name="Раза з дробовими числівниками" id="raza_with_fractions">
+      <antipattern>
+        <token regexp="yes">([0-9.,—–-]+)?[0-9]+[.,][0-9]+|півтора</token>
+        <token>раза</token>
+      </antipattern>
+      <antipattern>
+        <token regexp="yes">[0-9]+[.,][0-9]+([0-9.,—–-]+)?|півтора</token>
+        <token>раза</token>
+      </antipattern>
+      <antipattern>
+        <token>половиною</token>
+        <token>раза</token>
+      </antipattern>
+      <antipattern>
+        <token>раза</token>
+        <token min="0" regexp="yes">[ву]</token>
+        <token regexp="yes">півтора(-.*)?</token>
+      </antipattern>
+      <pattern>
+        <token>раза
+          <exception case_sensitive="yes">Раза</exception>
+        </token>
+      </pattern>
+      <message>«\1» вживаємо лише після дробових числівників</message>
+      <suggestion>рази</suggestion>
+      <suggestion>разів</suggestion>
+      <suggestion>разу</suggestion>
+      <url>https://kulturamovy.org.ua/movni-trudnoshhi/r-movni-trudnoshhi/raz/</url>
+      <example correction="рази|разів|разу">Два <marker>раза</marker> прочитав.</example>
+      <example>1,5 раза.</example>
+      <example>раза півтора-два</example>
+      <example>у 2,3–2,5 раза</example>
+      <example>2,5–5 раза</example>
+      <example>Юсуф Раза Гілані</example>
+      <example>два з половиною раза</example>
+    </rule>
+
+
+    <rulegroup id="chyselnyi_chyslennyi" name="Чисельний і численний">
+      <rule>
+        <pattern>
+          <marker>
+              <token regexp="yes" inflected="yes">(не)?чисельний</token>
+          </marker>
+          <token regexp="yes" inflected="yes">асортимент|армія|верства|військо|ворог|гарнізон|глядач|громада|гурт|делегація|духовенство|заява|звернення|колектив|контингент|мітинг|нація|народ|організація|осередок|порушення|представництво|пікет|протест|прошарок|публікація|родина|сім'я|супротивник|товариство</token>
+        </pattern>
+        <message>Численний — який складається з великої кількості, чисельний — який стосується числа, кількості</message>
+        <suggestion><match no="1" regexp_match="(не)?(чисельн)(.*)" regexp_replace="$1численн$3"/></suggestion>
+        <example correction="численним">з <marker>чисельним</marker> військом</example>
+      </rule>
+
+      <rule>
+        <pattern>
+          <token regexp="yes">(най)?(більш|менш)е?|доволі|досить|дуже|настільки</token>
+          <marker>
+              <token inflected="yes" regexp="yes">(не)?чисельний</token>
+          </marker>
+        </pattern>
+        <message>Численний — який складається з великої кількості, чисельний — який стосується числа, кількості</message>
+        <suggestion><match no="2" regexp_match="(не)?(чисельн)(.*)" regexp_replace="$1численн$3"/></suggestion>
+        <example correction="численним">стає більш <marker>чисельним</marker>.</example>
+      </rule>
+
+      <rule>
+        <pattern>
+          <marker>
+              <token regexp="yes" inflected="yes">(не)?численний</token>
+          </marker>
+          <token regexp="yes" inflected="yes">вигляд|диференціювання|зріст|зростання|інтегрування|масштаб|метод|наростання|приріст|різниця|розв'язання|співвідношення|стан</token>
+        </pattern>
+        <message>Численний — який складається з великої кількості, чисельний — який стосується числа, кількості</message>
+        <suggestion><match no="1" regexp_match="(не)?(численн)(.*)" regexp_replace="$1числов$3"/></suggestion>
+        <suggestion><match no="1" regexp_match="(не)?(численн)(.*)" regexp_replace="$1чисельн$3"/></suggestion>
+        <example correction="числовому|чисельному">і <marker>численному</marker> методу</example>
+      </rule>
+
+      <!-- only singular -->
+      <rule>
+        <pattern>
+          <unify>
+            <feature id="gender"/>
+            <feature id="case"/>
+            <marker>
+              <token regexp="yes" inflected="yes">(не)?численний</token>
+            </marker>
+            <token regexp="yes" inflected="yes" postag_regexp="yes" postag="noun:.*?:[mnf].*">алгоритм|аналіз|експеримент|значення|критерій|масив|моделювання|опис|прогноз|розв'язок|розв'язання|ряд|спосіб|рішення|характеристика</token>
+          </unify>
+        </pattern>
+        <message>Численний — який складається з великої кількості, чисельний — який стосується числа, кількості</message>
+        <suggestion><match no="1" regexp_match="(не)?(численн)(.*)" regexp_replace="$1числов$3"/></suggestion>
+        <suggestion><match no="1" regexp_match="(не)?(численн)(.*)" regexp_replace="$1чисельн$3"/></suggestion>
+        <example correction="числовому|чисельному">і <marker>численному</marker> експерименті</example>
+        <example>тестували на численних експериментах</example>
+        <example>численні переваги</example>
+      </rule>
+
+      <!--  both ok: кількість, перевага, більшість, меншість -->
+    </rulegroup>
 
   </category>
 
@@ -2500,6 +2648,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
         <example>загрози паводку немає</example>
          -->
       </rule>
+    </rulegroup>
+
+    <rulegroup id="nezvazhayuchi_ne" name="Незважаючи не">
+      <rule>
+        <pattern>
+          <token>незважаючи</token>
+          <token>не</token>
+        </pattern>
+        <message>Можливо, ви мали на увазі <suggestion>\1 на</suggestion></message>
+        <example correction="незважаючи на">і <marker>незважаючи не</marker> це.</example>
+      </rule>
+
+      <rule>
+        <pattern>
+          <token>не</token>
+          <marker>
+            <token>зважаючи</token>
+            <token>не</token>
+          </marker>
+        </pattern>
+        <message>Можливо, ви мали на увазі <suggestion>\2 на</suggestion></message>
+        <example correction="зважаючи на">і не <marker>зважаючи не</marker> це.</example>
+      </rule>
+
+      <rule>
+        <antipattern>
+          <token>зважаючи</token>
+          <token>не</token>
+          <token regexp="yes">лише|с?тільки</token>
+          <token>на</token>
+        </antipattern>
+        <pattern>
+          <token>зважаючи
+            <exception scope="previous">не</exception>
+          </token>
+          <token>не</token>
+        </pattern>
+        <message>Можливо, ви мали на увазі <suggestion>\1 на</suggestion></message>
+        <example correction="зважаючи на">і <marker>зважаючи не</marker> ситуацію</example>
+        <example>зважаючи не лише на сучасні проблеми</example>
+      </rule>
+
     </rulegroup>
   </category>
 

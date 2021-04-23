@@ -26,6 +26,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Streams;
 import io.grpc.ManagedChannel;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
@@ -33,7 +35,7 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import org.jetbrains.annotations.Nullable;
 import org.languagetool.AnalyzedSentence;
 import org.languagetool.JLanguageTool;
-import org.languagetool.markup.AnnotatedText;
+import org.languagetool.Language;
 import org.languagetool.rules.ml.MLServerGrpc;
 import org.languagetool.rules.ml.MLServerProto;
 import org.slf4j.Logger;
@@ -44,6 +46,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -51,7 +55,7 @@ import java.util.stream.Collectors;
  * Base class fur rules running on external servers;
  * see gRPC service definition in languagetool-core/src/main/proto/ml_server.proto
  *
- * @see #create(ResourceBundle, RemoteRuleConfig, String, String, Map)  for an easy to add rules; return rule in Language::getRelevantRemoteRules
+ * @see #create(Language, ResourceBundle, RemoteRuleConfig, boolean, String, String, Map)  for an easy to add rules; return rule in Language::getRelevantRemoteRules
  * add it like this:
   <pre>
    public List&lt;Rule&gt; getRelevantRemoteRules(ResourceBundle messageBundle, List&lt;RemoteRuleConfig&gt; configs, GlobalConfig globalConfig, UserConfig userConfig, Language motherTongue, List&lt;Language&gt; altLanguages) throws IOException {
@@ -71,19 +75,17 @@ public abstract class GRPCRule extends RemoteRule {
   private static final Logger logger = LoggerFactory.getLogger(GRPCRule.class);
 
   public static String cleanID(String id) {
-    return id.replaceAll("[^a-zA-Z_]", "_");
+    return id.replaceAll("[^a-zA-Z_]", "_").toUpperCase();
   }
   /**
    * Internal rule to create rule matches with IDs based on Match Sub-IDs
    */
   protected class GRPCSubRule extends Rule {
-    private final String subId;
     private final String matchId;
     private final String description;
 
-    GRPCSubRule(String subId, @Nullable String description) {
-      this.subId = subId;
-      this.matchId = GRPCRule.this.getId() + "_" + cleanID(subId);
+    GRPCSubRule(String ruleId, String subId, @Nullable String description) {
+      this.matchId = cleanID(ruleId) + "_" + cleanID(subId);
       if (description == null || description.isEmpty()) {
         this.description = GRPCRule.this.getDescription();
         if (this.description == null || this.description.isEmpty()) {
@@ -171,8 +173,8 @@ public abstract class GRPCRule extends RemoteRule {
 
   private final Connection conn;
 
-  public GRPCRule(ResourceBundle messages, RemoteRuleConfig config, boolean inputLogging) {
-    super(messages, config, inputLogging);
+  public GRPCRule(Language language, ResourceBundle messages, RemoteRuleConfig config, boolean inputLogging) {
+    super(language, messages, config, inputLogging);
 
     synchronized (servers) {
       Connection conn = null;
@@ -196,24 +198,45 @@ public abstract class GRPCRule extends RemoteRule {
   }
 
   @Override
-  protected RemoteRule.RemoteRequest prepareRequest(List<AnalyzedSentence> sentences, AnnotatedText annotatedText) {
+  protected RemoteRule.RemoteRequest prepareRequest(List<AnalyzedSentence> sentences, @Nullable Long textSessionId) {
     List<String> text = sentences.stream().map(AnalyzedSentence::getText).collect(Collectors.toList());
+    List<Long> ids = Collections.emptyList();
+    if (textSessionId != null) {
+      ids = Collections.nCopies(text.size(), textSessionId);
+    }
+
     MLServerProto.MatchRequest req = MLServerProto.MatchRequest.newBuilder()
       .addAllSentences(text)
       .setInputLogging(inputLogging)
+      .addAllTextSessionID(ids)
       .build();
     return new MLRuleRequest(req, sentences);
   }
 
   @Override
-  protected Callable<RemoteRuleResult> executeRequest(RemoteRule.RemoteRequest request) {
+  protected Callable<RemoteRuleResult> executeRequest(RemoteRequest request, long timeoutMilliseconds) throws TimeoutException {
     return () -> {
       MLRuleRequest req = (MLRuleRequest) request;
 
-      MLServerProto.MatchResponse response = conn.stub.match(req.request);
+      MLServerProto.MatchResponse response;
+      try {
+        if (timeoutMilliseconds > 0) {
+          response = conn.stub
+            .withDeadlineAfter(timeoutMilliseconds, TimeUnit.MILLISECONDS)
+            .match(req.request);
+        } else {
+          response = conn.stub.match(req.request);
+        }
+      } catch (StatusRuntimeException e) {
+        if (e.getStatus().getCode() == Status.DEADLINE_EXCEEDED.getCode()) {
+          throw new TimeoutException(e.getMessage());
+        } else {
+          throw e;
+        }
+      }
       List<RuleMatch> matches = Streams.zip(response.getSentenceMatchesList().stream(), req.sentences.stream(), (matchList, sentence) ->
         matchList.getMatchesList().stream().map(match -> {
-            GRPCSubRule subRule = new GRPCSubRule(match.getSubId(), match.getRuleDescription());
+            GRPCSubRule subRule = new GRPCSubRule(match.getId(), match.getSubId(), match.getRuleDescription());
             String message = match.getMatchDescription();
             String shortMessage = match.getMatchShortDescription();
             if (message == null || message.isEmpty()) {
@@ -232,7 +255,7 @@ public abstract class GRPCRule extends RemoteRule {
           }
         )
       ).flatMap(Function.identity()).collect(Collectors.toList());
-      RemoteRuleResult result = new RemoteRuleResult(true, true, matches);
+      RemoteRuleResult result = new RemoteRuleResult(true, true, matches, req.sentences);
       return result;
     };
   }
@@ -245,11 +268,13 @@ public abstract class GRPCRule extends RemoteRule {
 
   @Override
   protected RemoteRuleResult fallbackResults(RemoteRule.RemoteRequest request) {
-    return new RemoteRuleResult(false, false, Collections.emptyList());
+    MLRuleRequest req = (MLRuleRequest) request;
+    return new RemoteRuleResult(false, false, Collections.emptyList(), req.sentences);
   }
 
   /**
    * Helper method to create instances of RemoteMLRule
+   * @param language rule language
    * @param messages for i18n; = JLanguageTool.getMessageBundle(lang)
    * @param config configuration for remote rule server;
    *               options: secure, clientKey, clientCertificate, rootCertificate
@@ -260,9 +285,9 @@ public abstract class GRPCRule extends RemoteRule {
    * @param messagesByID mapping match.sub_id -&gt; key in MessageBundle.properties for RuleMatch's message
    * @return instance of RemoteMLRule
    */
-  public static GRPCRule create(ResourceBundle messages, RemoteRuleConfig config, boolean inputLogging,
+  public static GRPCRule create(Language language, ResourceBundle messages, RemoteRuleConfig config, boolean inputLogging,
                                 String id, String descriptionKey, Map<String, String> messagesByID) {
-    return new GRPCRule(messages, config, inputLogging) {
+    return new GRPCRule(language, messages, config, inputLogging) {
 
 
       @Override
@@ -279,6 +304,7 @@ public abstract class GRPCRule extends RemoteRule {
 
   /**
    * Helper method to create instances of RemoteMLRule
+   * @param language rule language
    * @param config configuration for remote rule server;
    *               options: secure, clientKey, clientCertificate, rootCertificate
                    use RemoteRuleConfig.getRelevantConfig(id, configs)
@@ -288,9 +314,9 @@ public abstract class GRPCRule extends RemoteRule {
    * @param messagesByID mapping match.sub_id to RuleMatch's message
    * @return instance of RemoteMLRule
    */
-  public static GRPCRule create(RemoteRuleConfig config, boolean inputLogging,
+  public static GRPCRule create(Language language, RemoteRuleConfig config, boolean inputLogging,
                                 String id, String description, Map<String, String> messagesByID) {
-    return new GRPCRule(JLanguageTool.getMessageBundle(), config, inputLogging) {
+    return new GRPCRule(language, JLanguageTool.getMessageBundle(), config, inputLogging) {
 
 
       @Override
@@ -303,5 +329,12 @@ public abstract class GRPCRule extends RemoteRule {
         return description;
       }
     };
+  }
+
+  public static List<GRPCRule> createAll(Language language, List<RemoteRuleConfig> configs, boolean inputLogging, String prefix, String defaultDescription) {
+    return configs.stream()
+      .filter(cfg -> cfg.getRuleId().startsWith(prefix))
+      .map(cfg -> create(language, cfg, inputLogging, cfg.getRuleId(), defaultDescription, Collections.emptyMap()))
+      .collect(Collectors.toList());
   }
 }

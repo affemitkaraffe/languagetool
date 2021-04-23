@@ -74,7 +74,7 @@ public class FrenchWordTokenizer extends WordTokenizer {
     tagger = new FrenchTagger();
 
     // words not to be split
-    patterns[0] = Pattern.compile("^(rendez-vous|garde-à-vous|chez-eux|chez-moi|chez-nous|chez-soi|chez-toi|chez-vous)$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    patterns[0] = Pattern.compile("^(c'est-à-dire|add-on|add-ons|rendez-vous|garde-à-vous|chez-eux|chez-moi|chez-nous|chez-soi|chez-toi|chez-vous)$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     patterns[1] = Pattern.compile(
         "^(c['’]|j['’]|n['’]|m['’]|t['’]|s['’]|l['’]|d['’]|qu['’]|jusqu['’]|lorsqu['’]|puisqu['’]|quoiqu['’])([^\\-]*)(-ce|-elle|-t-elle|-elles|-t-elles|-en|-il|-t-il|-ils|-t-ils|-je|-la|-le|-les|-leur|-lui|-moi|-nous|-on|-t-on|-toi|-tu|-vous|-vs|-y)$",
         Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
@@ -140,7 +140,8 @@ public class FrenchWordTokenizer extends WordTokenizer {
             + "\u2028\u2029\u202a\u202b\u202c\u202d\u202e\u202f"
             + "\u205F\u2060\u2061\u2062\u2063\u206A\u206b\u206c\u206d"
             + "\u206E\u206F\u3000\u3164\ufeff\uffa0\ufff9\ufffa\ufffb"
-            + "|,.;()[]{}=*#∗+×÷<>!?:~/\\\"'«»„”“‘’`´…¿¡\t\n\r-·"
+            + "|,.;()[]{}=*#∗+×÷<>!?:~/\\\"'«»„”“‘’`´…¿¡\t\n\r-·™®"
+            + "\u2265\u2192\u21FE\u21C9\u21D2\u21E8\u21DB" // arrows
             + "\u2032", // prime...
         true);
     String s;

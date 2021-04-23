@@ -43,7 +43,7 @@ import java.util.*;
  */
 public class GrammalecteRule extends Rule {
 
-  private static Logger logger = LoggerFactory.getLogger(GrammalecteRule.class);
+  private static final Logger logger = LoggerFactory.getLogger(GrammalecteRule.class);
   private static final int TIMEOUT_MILLIS = 500;
   private static final long DOWN_INTERVAL_MILLISECONDS = 5000;
 
@@ -95,7 +95,11 @@ public class GrammalecteRule extends Rule {
     "typo_espace_manquant_après2", // false alarm in urls (e.g. '&rk=...')
     "typo_espace_manquant_après3", // false alarm in file names (e.g. 'La teaser.zip')
     "typo_tiret_incise2",  // picky
-    "g1__eleu_élisions_manquantes__b1_a1_1" // picky
+    "eepi_écriture_épicène_singulier",
+    "g1__bs_vidéoprotection__b1_a1_1",
+    "g1__eleu_élisions_manquantes__b1_a1_1", // picky
+    "typo_tiret_incise1", // picky
+    "p_sigle2" // picky
   ));
 
   public GrammalecteRule(ResourceBundle messages, GlobalConfig globalConfig) {
@@ -161,6 +165,9 @@ public class GrammalecteRule extends Rule {
   private List<RuleMatch> parseJson(InputStream inputStream) throws IOException {
     Map map = mapper.readValue(inputStream, Map.class);
     List matches = (ArrayList) map.get("data");
+    if (matches == null) {
+      throw new RuntimeException("No 'data' found in grammalecte JSON: " + map);  // handled in match()
+    }
     List<RuleMatch> result = new ArrayList<>();
     for (Object match : matches) {
       List<RuleMatch> remoteMatches = getMatches((Map<String, Object>)match);
@@ -198,8 +205,8 @@ public class GrammalecteRule extends Rule {
   }
 
   static class GrammalecteInternalRule extends Rule {
-    private String id;
-    private String desc;
+    private final String id;
+    private final String desc;
 
     GrammalecteInternalRule(String id, String desc) {
       this.id = id;

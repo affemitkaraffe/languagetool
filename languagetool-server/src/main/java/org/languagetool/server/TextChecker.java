@@ -57,14 +57,15 @@ abstract class TextChecker {
 
   private static final int PINGS_CLEAN_MILLIS = 60 * 1000;  // internal pings database will be cleaned this often
   private static final int PINGS_MAX_SIZE = 5000;
+  private static final int NGRAM_THRESHOLD = 50;
 
   protected abstract void setHeaders(HttpExchange httpExchange);
-  protected abstract String getResponse(AnnotatedText text, Language language, DetectedLanguage lang, Language motherTongue, List<RuleMatch> matches,
-                                        List<RuleMatch> hiddenMatches, String incompleteResultReason, int compactMode);
+  protected abstract String getResponse(AnnotatedText text, Language language, DetectedLanguage lang, Language motherTongue, List<CheckResults> matches,
+                                        List<RuleMatch> hiddenMatches, String incompleteResultReason, int compactMode, boolean showPremiumHint);
   @NotNull
   protected abstract List<String> getPreferredVariants(Map<String, String> parameters);
   protected abstract DetectedLanguage getLanguage(String text, Map<String, String> parameters, List<String> preferredVariants,
-                                                  List<String> additionalDetectLangs, List<String> preferredLangs);
+                                                  List<String> additionalDetectLangs, List<String> preferredLangs, boolean testMode);
   protected abstract boolean getLanguageAutoDetect(Map<String, String> parameters);
   @NotNull
   protected abstract List<String> getEnabledRuleIds(Map<String, String> parameters);
@@ -81,14 +82,15 @@ abstract class TextChecker {
   private static final int CACHE_STATS_PRINT = 500; // print cache stats every n cache requests
   
   private final Map<String,Integer> languageCheckCounts = new HashMap<>();
-  private Queue<Runnable> workQueue;
-  private RequestCounter reqCounter;
+  private final Queue<Runnable> workQueue;
+  private final RequestCounter reqCounter;
+
   // keep track of timeouts of the hidden matches server, check health periodically;
   // -1 => healthy, else => check timed out at given date, check back if time difference > config.getHiddenMatchesFailTimeout()
   private long lastHiddenMatchesServerTimeout;
   // counter; mark as down if this reaches hidenMatchesServerFall
   private long hiddenMatchesServerFailures = 0;
-  private final LanguageIdentifier identifier;
+  private final LanguageIdentifier fastTextIdentifier;
   private final ExecutorService executorService;
   private final ResultCache cache;
   private final DatabaseLogger databaseLogger;
@@ -96,14 +98,19 @@ abstract class TextChecker {
   private final Random random = new Random();
   private final Set<DatabasePingLogEntry> pings = new HashSet<>();
   private long pingsCleanDateMillis = System.currentTimeMillis();
+  private LanguageIdentifier ngramIdentifier = null;
   PipelinePool pipelinePool; // mocked in test -> package-private / not final
 
   TextChecker(HTTPServerConfig config, boolean internalServer, Queue<Runnable> workQueue, RequestCounter reqCounter) {
     this.config = config;
     this.workQueue = workQueue;
     this.reqCounter = reqCounter;
-    this.identifier = new LanguageIdentifier();
-    this.identifier.enableFasttext(config.getFasttextBinary(), config.getFasttextModel());
+    this.fastTextIdentifier = new LanguageIdentifier();
+    this.fastTextIdentifier.enableFasttext(config.getFasttextBinary(), config.getFasttextModel());
+    if (config.getNgramLangIdentData() != null) {
+      this.ngramIdentifier = new LanguageIdentifier();
+      this.ngramIdentifier.enableNgrams(config.getNgramLangIdentData());
+    }
     this.executorService = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("lt-textchecker-thread-%d").build());
     this.cache = config.getCacheSize() > 0 ? new ResultCache(
       config.getCacheSize(), config.getCacheTTLSeconds(), TimeUnit.SECONDS) : null;
@@ -150,10 +157,11 @@ abstract class TextChecker {
     List<JLanguageTool.Mode> addonModes = Arrays.asList(JLanguageTool.Mode.TEXTLEVEL_ONLY, JLanguageTool.Mode.ALL_BUT_TEXTLEVEL_ONLY);
     UserConfig user = new UserConfig();
     for (Language language : prewarmLanguages) {
+      // add-on uses picky mode since 2021-01-20
       for (JLanguageTool.Mode mode : addonModes) {
         QueryParams params = new QueryParams(Collections.emptyList(), Collections.emptyList(), addonDisabledRules,
           Collections.emptyList(), Collections.emptyList(), false, true,
-          false, false, false, mode, JLanguageTool.Level.DEFAULT, null);
+          true, true, false, mode, JLanguageTool.Level.PICKY, null);
         PipelinePool.PipelineSettings settings = new PipelinePool.PipelineSettings(language, null, params, config.globalConfig, user);
         prewarmSettings.put(settings, NUM_PIPELINES_PER_SETTING);
 
@@ -196,6 +204,8 @@ abstract class TextChecker {
     long timeStart = System.currentTimeMillis();
     UserLimits limits = ServerTools.getUserLimits(parameters, config);
 
+    String requestId = httpExchange.getRequestHeaders().getFirst("X-Request-ID");
+
     // logging information
     String agent = parameters.get("useragent") != null ? parameters.get("useragent") : "-";
     Long agentId = null, userId = null;
@@ -221,12 +231,16 @@ abstract class TextChecker {
     try {
       if (parameters.containsKey("textSessionId")) {
         String textSessionIdStr = parameters.get("textSessionId");
-        if (textSessionIdStr.contains(":")) { // transitioning to new format used in chrome addon
+        if (textSessionIdStr.startsWith("user:")) {
+          int sepPos = textSessionIdStr.indexOf(':');
+          String sessionId = textSessionIdStr.substring(sepPos + 1);
+          textSessionId = Long.valueOf(sessionId);
+        } else if (textSessionIdStr.contains(":")) { // transitioning to new format used in chrome addon
           // format: "{random number in 0..99999}:{unix time}"
           long random, timestamp;
           int sepPos = textSessionIdStr.indexOf(':');
-          random = Long.valueOf(textSessionIdStr.substring(0, sepPos));
-          timestamp = Long.valueOf(textSessionIdStr.substring(sepPos + 1));
+          random = Long.parseLong(textSessionIdStr.substring(0, sepPos));
+          timestamp = Long.parseLong(textSessionIdStr.substring(sepPos + 1));
           // use random number to choose a slice in possible range of values
           // then choose position in slice by timestamp
           long maxRandom = 100000;
@@ -274,7 +288,8 @@ abstract class TextChecker {
             Arrays.asList(parameters.get("noopLanguages").split(",")) : Collections.emptyList();
     List<String> preferredLangs = parameters.get("preferredLanguages") != null ?
             Arrays.asList(parameters.get("preferredLanguages").split(",")) : Collections.emptyList();
-    DetectedLanguage detLang = getLanguage(aText.getPlainText(), parameters, preferredVariants, noopLangs, preferredLangs);
+    DetectedLanguage detLang = getLanguage(aText.getPlainText(), parameters, preferredVariants, noopLangs, preferredLangs,
+      parameters.getOrDefault("ld", "control").equalsIgnoreCase("test"));
     Language lang = detLang.getGivenLanguage();
 
     // == temporary counting code ======================================
@@ -347,25 +362,26 @@ abstract class TextChecker {
 
     int textSize = aText.getPlainText().length();
 
-    List<RuleMatch> ruleMatchesSoFar = Collections.synchronizedList(new ArrayList<>());
+    List<CheckResults> ruleMatchesSoFar = Collections.synchronizedList(new ArrayList<>());
 
-    Future<List<RuleMatch>> future = executorService.submit(new Callable<List<RuleMatch>>() {
+    Future<List<CheckResults>> future = executorService.submit(new Callable<List<CheckResults>>() {
       @Override
-      public List<RuleMatch> call() throws Exception {
+      public List<CheckResults> call() throws Exception {
         // use to fake OOM in thread for testing:
         /*if (Math.random() < 0.1) {
           throw new OutOfMemoryError();
         }*/
-        return getRuleMatches(aText, lang, motherTongue, parameters, params, userConfig, detLang, preferredLangs, preferredVariants, f -> ruleMatchesSoFar.add(f));
+        return getRuleMatches(aText, lang, motherTongue, parameters, params, userConfig, detLang, preferredLangs,
+                preferredVariants, f -> ruleMatchesSoFar.add(new CheckResults(Collections.singletonList(f), Collections.emptyList())));
       }
     });
     String incompleteResultReason = null;
-    List<RuleMatch> matches;
+    List<CheckResults> res;
     try {
       if (limits.getMaxCheckTimeMillis() < 0) {
-        matches = future.get();
+        res = future.get();
       } else {
-        matches = future.get(limits.getMaxCheckTimeMillis(), TimeUnit.MILLISECONDS);
+        res = future.get(limits.getMaxCheckTimeMillis(), TimeUnit.MILLISECONDS);
       }
     } catch (ExecutionException e) {
       future.cancel(true);
@@ -377,7 +393,7 @@ abstract class TextChecker {
         logger.warn(e.getMessage() + " - returning " + ruleMatchesSoFar.size() + " matches found so far. " +
           "Detected language: " + detLang + ", " + ServerTools.getLoggingInfo(remoteAddress, null, -1, httpExchange,
           parameters, System.currentTimeMillis()-timeStart, reqCounter));
-        matches = new ArrayList<>(ruleMatchesSoFar);  // threads might still be running, so make a copy
+        res = new ArrayList<>(ruleMatchesSoFar);  // threads might still be running, so make a copy
         incompleteResultReason = "Results are incomplete: " + ExceptionUtils.getRootCause(e).getMessage();
       } else if (e.getCause() != null && e.getCause() instanceof OutOfMemoryError) {
         throw (OutOfMemoryError)e.getCause();
@@ -398,10 +414,13 @@ abstract class TextChecker {
                        ", #" + count +
                        ", " + aText.getPlainText().length() + " characters of text" +
                        ", mode: " + mode.toString().toLowerCase() +
-                       ", h: " + reqCounter.getHandleCount() + ", r: " + reqCounter.getRequestCount() + ", system load: " + loadInfo + ")";
+                       ", h: " + reqCounter.getHandleCount() +
+                       ", r: " + reqCounter.getRequestCount() +
+                       ", requestId: " + requestId +
+                       ", system load: " + loadInfo + ")";
       if (params.allowIncompleteResults) {
         logger.info(message + " - returning " + ruleMatchesSoFar.size() + " matches found so far");
-        matches = new ArrayList<>(ruleMatchesSoFar);  // threads might still be running, so make a copy
+        res = new ArrayList<>(ruleMatchesSoFar);  // threads might still be running, so make a copy
         incompleteResultReason = "Results are incomplete: text checking took longer than allowed maximum of " +
                 String.format(Locale.ENGLISH, "%.2f", limits.getMaxCheckTimeMillis()/1000.0) + " seconds";
       } else {
@@ -417,7 +436,7 @@ abstract class TextChecker {
     List<RuleMatch> hiddenMatches = new ArrayList<>();
     if (config.getHiddenMatchesServer() != null && params.enableHiddenRules &&
       config.getHiddenMatchesLanguages().contains(lang)) {
-      if(config.getHiddenMatchesServerFailTimeout() > 0 && lastHiddenMatchesServerTimeout != -1 &&
+      if (config.getHiddenMatchesServerFailTimeout() > 0 && lastHiddenMatchesServerTimeout != -1 &&
         System.currentTimeMillis() - lastHiddenMatchesServerTimeout < config.getHiddenMatchesServerFailTimeout()) {
         ServerMetricsCollector.getInstance().logHiddenServerStatus(false);
         ServerMetricsCollector.getInstance().logHiddenServerRequest(false);
@@ -428,6 +447,10 @@ abstract class TextChecker {
         try {
           long start = System.currentTimeMillis();
           List<RemoteRuleMatch> extensionMatches = resultExtender.getExtensionMatches(aText.getPlainText(), parameters);
+          List<RuleMatch> matches = new ArrayList<>();
+          for (CheckResults result : res) {
+            matches.addAll(result.getRuleMatches());
+          }
           hiddenMatches = resultExtender.getFilteredExtensionMatches(matches, extensionMatches);
           long end = System.currentTimeMillis();
           logger.info("Hidden matches: " + extensionMatches.size() + " -> " + hiddenMatches.size() + " in " + (end - start) + "ms for " + lang.getShortCodeWithCountryAndVariant());
@@ -449,7 +472,7 @@ abstract class TextChecker {
       }
     }
     int compactMode = Integer.parseInt(parameters.getOrDefault("c", "0"));
-    String response = getResponse(aText, lang, detLang, motherTongue, matches, hiddenMatches, incompleteResultReason, compactMode);
+    String response = getResponse(aText, lang, detLang, motherTongue, res, hiddenMatches, incompleteResultReason, compactMode, limits.getPremiumUid() == null);
     if (params.callback != null) {
       // JSONP - still needed today for the special case of hosting your own on-premise LT without SSL
       // and using it from a local MS Word (not Online Word) - issue #89 in the add-in repo:
@@ -475,23 +498,26 @@ abstract class TextChecker {
     int computationTime = (int) (System.currentTimeMillis() - timeStart);
     String version = parameters.get("v") != null ? ", v:" + parameters.get("v") : "";
     String skipLimits = limits.getSkipLimits() ? ", skipLimits" : "";
-    logger.info("Check done: " + aText.getPlainText().length() + " chars, " + languageMessage + ", #" + count + ", " + referrer + ", "
-            + matches.size() + " matches, "
-            + computationTime + "ms, agent:" + agent + version
-            + ", " + messageSent + ", q:" + (workQueue != null ? workQueue.size() : "?")
-            + ", h:" + reqCounter.getHandleCount() + ", dH:" + reqCounter.getDistinctIps()
-            + ", m:" + mode.toString().toLowerCase() + skipLimits);
-
-    int matchCount = matches.size();
+    
+    int matchCount = 0;
     Map<String, Integer> ruleMatchCount = new HashMap<>();
-    for (RuleMatch match : matches) {
-      String ruleId = match.getRule().getId();
-      ruleMatchCount.put(ruleId, ruleMatchCount.getOrDefault(ruleId, 0) + 1);
+    for (CheckResults r : res) {
+      for (RuleMatch ruleMatch : r.getRuleMatches()) {
+        matchCount++;
+        String ruleId = ruleMatch.getRule().getId();
+        ruleMatchCount.put(ruleId, ruleMatchCount.getOrDefault(ruleId, 0) + 1);
+      }
     }
-
+    logger.info("Check done: " + aText.getPlainText().length() + " chars, " + languageMessage +
+        ", requestId: " + requestId + ", #" + count + ", " + referrer + ", "
+        + matchCount + " matches, "
+        + computationTime + "ms, agent:" + agent + version
+        + ", " + messageSent + ", q:" + (workQueue != null ? workQueue.size() : "?")
+        + ", h:" + reqCounter.getHandleCount() + ", dH:" + reqCounter.getDistinctIps()
+        + ", m:" + ServerTools.getModeForLog(mode) + skipLimits);
     ServerMetricsCollector.getInstance().logCheck(
-      lang, computationTime, textSize, matchCount, mode, agent, ruleMatchCount);
-
+      lang, computationTime, textSize, matchCount, mode);
+    
     if (!config.isSkipLoggingChecks()) {
       DatabaseCheckLogEntry logEntry = new DatabaseCheckLogEntry(userId, agentId, logServerId, textSize, matchCount,
         lang, detLang.getDetectedLanguage(), computationTime, textSessionId, mode.toString());
@@ -525,7 +551,7 @@ abstract class TextChecker {
   private Map<String, Integer> getRuleValues(Map<String, String> parameters) {
     Map<String, Integer> ruleValues = new HashMap<>();
     String parameterString = parameters.get("ruleValues");
-    if(parameterString == null) {
+    if (parameterString == null) {
       return ruleValues;
     }
     String[] pairs = parameterString.split("[,]");
@@ -547,8 +573,8 @@ abstract class TextChecker {
     }
   }
 
-  private List<RuleMatch> getRuleMatches(AnnotatedText aText, Language lang,
-                                         Language motherTongue, Map<String, String> parameters, 
+  private List<CheckResults> getRuleMatches(AnnotatedText aText, Language lang,
+                                         Language motherTongue, Map<String, String> parameters,
                                          QueryParams params, UserConfig userConfig,
                                          DetectedLanguage detLang,
                                          List<String> preferredLangs, List<String> preferredVariants,
@@ -574,12 +600,14 @@ abstract class TextChecker {
         targetLt.addMatchFilter(new DictionaryMatchFilter(userConfig));
       }
       List<BitextRule> bitextRules = Tools.getBitextRules(sourceLanguage, lang);
-      return Tools.checkBitext(parameters.get("sourceText"), aText.getPlainText(), sourceLt, targetLt, bitextRules);
+      return Collections.singletonList(
+              new CheckResults(Tools.checkBitext(parameters.get("sourceText"), aText.getPlainText(), sourceLt, targetLt, bitextRules), Collections.emptyList())
+      );
     } else {
-      List<RuleMatch> matches = new ArrayList<>();
+      List<CheckResults> res = new ArrayList<>();
 
       if (preferredLangs.size() < 2 || parameters.get("multilingual") == null || parameters.get("multilingual").equals("false")) {
-        matches.addAll(getPipelineResults(aText, lang, motherTongue, params, userConfig, listener));
+        res.addAll(getPipelineResults(aText, lang, motherTongue, params, userConfig, listener));
       } else {
         // support for multilingual texts:
         try {
@@ -598,15 +626,15 @@ abstract class TextChecker {
           langs.addAll(secondLangs);
           Map<Language, AnnotatedTextBuilder> lang2builder = getBuilderMap(fragments, new HashSet<>(langs));
           for (Map.Entry<Language, AnnotatedTextBuilder> entry : lang2builder.entrySet()) {
-            matches.addAll(getPipelineResults(entry.getValue().build(), entry.getKey(), motherTongue, params, userConfig, listener));
+            res.addAll(getPipelineResults(entry.getValue().build(), entry.getKey(), motherTongue, params, userConfig, listener));
           }
         } catch (Exception e) {
           logger.error("Problem with multilingual mode (preferredLangs=" + preferredLangs+ ", preferredVariants=" + preferredVariants + "), " +
             "falling back to single language.", e);
-          matches.addAll(getPipelineResults(aText, lang, motherTongue, params, userConfig, listener));
+          res.addAll(getPipelineResults(aText, lang, motherTongue, params, userConfig, listener));
         }
       }
-      return matches;
+      return res;
     }
   }
 
@@ -619,20 +647,25 @@ abstract class TextChecker {
     return Languages.getLanguageForShortCode(langCode);
   }
 
-  private List<RuleMatch> getPipelineResults(AnnotatedText aText, Language lang, Language motherTongue, QueryParams params, UserConfig userConfig, RuleMatchListener listener) throws Exception {
+  private List<CheckResults> getPipelineResults(AnnotatedText aText, Language lang, Language motherTongue, QueryParams params, UserConfig userConfig, RuleMatchListener listener) throws Exception {
     PipelinePool.PipelineSettings settings = null;
     Pipeline lt = null;
-    List<RuleMatch> matches = new ArrayList<>();
+    List<CheckResults> res = new ArrayList<>();
     try {
       settings = new PipelinePool.PipelineSettings(lang, motherTongue, params, config.globalConfig, userConfig);
       lt = pipelinePool.getPipeline(settings);
-      matches.addAll(lt.check(aText, true, JLanguageTool.ParagraphHandling.NORMAL, listener, params.mode, params.level, executorService));
+      Long textSessionId = userConfig.getTextSessionId();
+      if (params.regressionTestMode) {
+        textSessionId = -2L; // magic value for remote rule roll-out - includes all results, even from disabled models
+      }
+      res.add(lt.check2(aText, true, JLanguageTool.ParagraphHandling.NORMAL, listener,
+        params.mode, params.level, executorService, textSessionId));
     } finally {
       if (lt != null) {
         pipelinePool.returnPipeline(settings, lt);
       }
     }
-    return matches;
+    return res;
   }
 
   @NotNull
@@ -675,8 +708,20 @@ abstract class TextChecker {
   }
 
   DetectedLanguage detectLanguageOfString(String text, String fallbackLanguage, List<String> preferredVariants,
-                                          List<String> noopLangs, List<String> preferredLangs) {
-    DetectedLanguage detected = identifier.detectLanguage(text, noopLangs, preferredLangs);
+                                          List<String> noopLangs, List<String> preferredLangs, boolean testMode) {
+    DetectedLanguage detected;
+    //String mode;
+    //long t1 = System.nanoTime();
+    if (ngramIdentifier != null && text.length() < NGRAM_THRESHOLD) {
+      detected = ngramIdentifier.detectLanguage(text, noopLangs, preferredLangs);
+      //mode = "ngram";
+    } else {
+      detected = fastTextIdentifier.detectLanguage(text, noopLangs, preferredLangs);
+      //mode = fastTextIdentifier.isFastTextEnabled() ? "fasttext" : "built-in";
+    }
+    //long t2 = System.nanoTime();
+    //float runTime = (t2-t1)/1000.0f/1000.0f;
+    //System.out.printf(Locale.ENGLISH, "detected " + detected + " using " + mode + " in %.2fms for %d chars\n", runTime, text.length());
     Language lang;
     if (detected == null) {
       lang = Languages.getLanguageForShortCode(fallbackLanguage != null ? fallbackLanguage : "en");
@@ -721,6 +766,8 @@ abstract class TextChecker {
     /** allowed to log input with stack traces to reproduce errors? */
     final boolean inputLogging;
 
+    final boolean regressionTestMode; // no fallbacks for remote rules, retries, enable all rules
+
     QueryParams(List<Language> altLanguages, List<String> enabledRules, List<String> disabledRules, List<CategoryId> enabledCategories, List<CategoryId> disabledCategories,
                 boolean useEnabledOnly, boolean useQuerySettings, boolean allowIncompleteResults, boolean enableHiddenRules, boolean enableTempOffRules, JLanguageTool.Mode mode, JLanguageTool.Level level, @Nullable String callback) {
       this(altLanguages, enabledRules, disabledRules, enabledCategories, disabledCategories, useEnabledOnly, useQuerySettings, allowIncompleteResults, enableHiddenRules, enableTempOffRules, mode, level, callback, true);
@@ -738,6 +785,7 @@ abstract class TextChecker {
       this.allowIncompleteResults = allowIncompleteResults;
       this.enableHiddenRules = enableHiddenRules;
       this.enableTempOffRules = enableTempOffRules;
+      this.regressionTestMode = enableTempOffRules;
       this.mode = Objects.requireNonNull(mode);
       this.level = Objects.requireNonNull(level);
       if (callback != null && !callback.matches("[a-zA-Z]+")) {
@@ -760,6 +808,7 @@ abstract class TextChecker {
         .append(allowIncompleteResults)
         .append(enableHiddenRules)
         .append(enableTempOffRules)
+        .append(regressionTestMode)
         .append(mode)
         .append(level)
         .append(callback)
@@ -785,6 +834,7 @@ abstract class TextChecker {
         .append(allowIncompleteResults, other.allowIncompleteResults)
         .append(enableHiddenRules, other.enableHiddenRules)
         .append(enableTempOffRules, other.enableTempOffRules)
+        .append(regressionTestMode, other.regressionTestMode)
         .append(mode, other.mode)
         .append(level, other.level)
         .append(callback, other.callback)
@@ -805,6 +855,7 @@ abstract class TextChecker {
         .append("allowIncompleteResults", allowIncompleteResults)
         .append("enableHiddenRules", enableHiddenRules)
         .append("enableTempOffRules", enableTempOffRules)
+        .append("regressionTestMode", regressionTestMode)
         .append("mode", mode)
         .append("level", level)
         .append("callback", callback)
